@@ -1,0 +1,19 @@
+# Competency question: which capabilities serve a given goal?
+#
+# The question a planner asks before deciding where effort should go. Retired
+# capabilities are excluded: they are kept so old references resolve, not so they
+# keep turning up as live answers.
+
+PREFIX biz:  <https://semantic-layer.19h09.co/vocab/biz#>
+PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?goal ?goalLabel ?capability ?capabilityLabel
+WHERE {
+    ?capability a biz:Capability ;
+                biz:supports ?goal .
+    ?goal rdfs:label ?goalLabel .
+    ?capability rdfs:label ?capabilityLabel .
+    FILTER NOT EXISTS { ?capability owl:deprecated true }
+}
+ORDER BY ?goal ?capability

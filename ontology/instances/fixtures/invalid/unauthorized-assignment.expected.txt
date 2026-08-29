@@ -1,0 +1,1 @@
+Assignment https://semantic-layer.19h09.co/fixture/biz/assignment/unauthorized assigns https://semantic-layer.19h09.co/fixture/biz/agent/newcomer to capability https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing, but https://semantic-layer.19h09.co/fixture/biz/agent/newcomer holds no role permitting it. Authorization is not implied by being asked.

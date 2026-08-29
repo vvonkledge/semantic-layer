@@ -1,0 +1,1 @@
+https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing supersedes https://semantic-layer.19h09.co/fixture/biz/capability/card-payments, which is not marked owl:deprecated true. A retired identifier stays in the graph, deprecated, so references held elsewhere keep resolving.

@@ -1,0 +1,31 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+# A deliberate violation of exactly one shape. See tests/test_negative_fixtures.py.
+
+@prefix biz:      <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core:     <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix goal:     <https://semantic-layer.19h09.co/fixture/biz/goal/> .
+@prefix cap:      <https://semantic-layer.19h09.co/fixture/biz/capability/> .
+@prefix team:     <https://semantic-layer.19h09.co/fixture/biz/team/> .
+@prefix agent:    <https://semantic-layer.19h09.co/fixture/biz/agent/> .
+@prefix role:     <https://semantic-layer.19h09.co/fixture/biz/role/> .
+@prefix policy:   <https://semantic-layer.19h09.co/fixture/biz/policy/> .
+@prefix asg:      <https://semantic-layer.19h09.co/fixture/biz/assignment/> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Complete, well-formed, and still not allowed: the agent holds no role permitting the
+# capability it has been pointed at.
+asg:unauthorized
+    a biz:Assignment ;
+    rdfs:label "Work the assignee may not perform" ;
+    biz:assignedTo agent:newcomer ;
+    biz:targetsCapability cap:payment-processing ;
+    biz:servesGoal goal:checkout-reliability ;
+    biz:governedBy policy:production-change-review .
+
+agent:newcomer a biz:AgentIdentity ; rdfs:label "Newcomer agent" .
+cap:payment-processing a biz:Capability ; rdfs:label "Payment processing" ;
+    biz:ownedBy team:payments .
+goal:checkout-reliability a biz:Goal ; rdfs:label "Checkout reliability" .
+policy:production-change-review a biz:Policy ; rdfs:label "Production change review" .
+team:payments a biz:Team ; rdfs:label "Payments team" .

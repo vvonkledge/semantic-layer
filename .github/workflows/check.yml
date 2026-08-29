@@ -1,0 +1,23 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+# The suite reads committed files and nothing else. No secrets are needed, and none
+# are granted.
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # `just` comes from PyPI so the only tooling CI needs is uv.
+      - run: uvx --from rust-just@1.58.0 just check

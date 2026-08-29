@@ -1,0 +1,1 @@
+Assignment https://semantic-layer.19h09.co/fixture/biz/assignment/assigned-to-a-team is assigned to https://semantic-layer.19h09.co/fixture/biz/team/payments, which is not an AgentIdentity. Assignments are given to agents; people and teams own capabilities instead.

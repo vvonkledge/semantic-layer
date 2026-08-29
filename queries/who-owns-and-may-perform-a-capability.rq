@@ -1,0 +1,20 @@
+# Competency question: who owns a capability, and who may perform it?
+#
+# Ownership and permission are different answers to different questions. The owner
+# answers for the capability; a performer holds a role permitting it. The same actor
+# is often both, and the model must not assume it.
+
+PREFIX biz:  <https://semantic-layer.19h09.co/vocab/biz#>
+PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?capability ?capabilityLabel ?owner ?performer ?role
+WHERE {
+    ?capability a biz:Capability ;
+                rdfs:label ?capabilityLabel ;
+                biz:ownedBy ?owner .
+    ?performer biz:grantsRole ?role .
+    ?role biz:permits ?capability .
+    FILTER NOT EXISTS { ?capability owl:deprecated true }
+}
+ORDER BY ?capability ?performer ?role

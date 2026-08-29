@@ -1,0 +1,1 @@
+Capability https://semantic-layer.19h09.co/fixture/biz/capability/shared-reporting has more than one owner. Accountability is singular; split the capability instead of splitting its ownership.

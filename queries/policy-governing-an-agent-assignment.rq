@@ -1,0 +1,16 @@
+# Competency question: under which policy is an agent doing this work, and why?
+#
+# The audit question. One row carries the whole chain of authority: which agent,
+# exercising which capability, in service of which goal, under which policy.
+
+PREFIX biz: <https://semantic-layer.19h09.co/vocab/biz#>
+
+SELECT ?assignment ?agent ?capability ?goal ?policy
+WHERE {
+    ?assignment a biz:Assignment ;
+                biz:assignedTo ?agent ;
+                biz:targetsCapability ?capability ;
+                biz:servesGoal ?goal ;
+                biz:governedBy ?policy .
+}
+ORDER BY ?assignment
