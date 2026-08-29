@@ -15,20 +15,24 @@ or not this file has heard of the parameter that states it. The parameters it ha
 heard of are held against the list pyshacl enforces, because the way this audit went
 wrong twice was a hand-written list of SHACL terms falling behind SHACL.
 
-One SHACL family is outside that guarantee rather than inside it, and is therefore
-refused rather than audited: the qualified family. A qualified constraint says two
-things at once - how many values, and which values count - and only the first has a
-shape a fixture can be written against. A fixture that trips a count trips it at any
-value shape, so widening sh:qualifiedValueShape loosens both counts while every
-committed fixture goes on failing for exactly its committed reason and the suite
-stays green. Phase 0 does not accept a constraint whose meaning the suite cannot
-hold, and nothing in the shapes file writes one today, so the family is prohibited
-outright here until its value-shape half can be audited. That is a boundary, not a
-statement about SHACL: the prohibition is what is guaranteed, and no wider guarantee
-is claimed for it.
+Two groups of SHACL terms are outside that guarantee rather than inside it, and are
+therefore refused rather than audited. The qualified family says two things at once -
+how many values, and which values count - and only the first has a shape a fixture can
+be written against: a fixture that trips a count trips it at any value shape, so
+widening sh:qualifiedValueShape loosens both counts while every committed fixture goes
+on failing for exactly its committed reason. The modifiers sh:flags and
+sh:ignoredProperties do the same to the parameter they sit beside: a fixture committed
+against a sh:pattern is a value that fails under either casing, and one committed
+against a sh:closed is a node carrying a property nobody would ignore, so both go on
+failing for their committed reason after the rule they defend has widened. Phase 0 does
+not accept a constraint whose meaning the suite cannot hold, and nothing in the shapes
+file writes either group today, so both are prohibited outright here until the half
+they move can be audited. That is a boundary, not a statement about SHACL: the
+prohibition is what is guaranteed, and no wider guarantee is claimed for it.
 """
 
 import re
+from typing import NamedTuple
 
 import pytest
 from pyshacl import validate
@@ -46,7 +50,7 @@ from semantic_layer import graph
 #: this set is complete, so what is absent from it is not left to a reading of this
 #: comment: every parameter pyshacl enforces is either listed here, named in
 #: NOT_A_CONSTRAINT_ALONE with the reason it states no rule of its own, or named in
-#: FORBIDDEN_PARAMETERS as a family this layer does not support - and a term that is
+#: FORBIDDEN_PARAMETERS as a term this layer does not support - and a term that is
 #: none of the three fails the build.
 CONSTRAINT_PARAMETERS = frozenset(
     {
@@ -62,7 +66,7 @@ CONSTRAINT_PARAMETERS = frozenset(
         SH.maxInclusive,
         SH.minExclusive,
         SH.maxExclusive,
-        # String-based.
+        # String-based. sh:flags is not here: see UNSAFE_MODIFIERS.
         SH.minLength,
         SH.maxLength,
         SH.pattern,
@@ -78,9 +82,9 @@ CONSTRAINT_PARAMETERS = frozenset(
         SH["and"],
         SH["or"],
         SH.xone,
-        # Shape-based. The qualified family is not here: see FORBIDDEN_PARAMETERS.
+        # Shape-based. The qualified family is not here: see QUALIFIED_FAMILY.
         SH.node,
-        # Other.
+        # Other. sh:ignoredProperties is not here: see UNSAFE_MODIFIERS.
         SH.closed,
         SH.hasValue,
         SH["in"],
@@ -101,7 +105,7 @@ CONSTRAINT_PARAMETERS = frozenset(
 #: forces the value shape and its count apart and the value shape cannot then carry a
 #: message of its own. Neither classification is sound, so the family is refused in
 #: phase 0 instead, and the refusal is what this file guarantees about it.
-FORBIDDEN_PARAMETERS = frozenset(
+QUALIFIED_FAMILY = frozenset(
     {
         SH.qualifiedValueShape,
         SH.qualifiedMinCount,
@@ -110,10 +114,68 @@ FORBIDDEN_PARAMETERS = frozenset(
     }
 )
 
+#: The SHACL modifiers this layer refuses for the same reason, one step smaller. A
+#: modifier states no rule of its own - which is why both of these were filed as
+#: structure until now - but it decides where the rule beside it draws its line, and
+#: that is the half no fixture holds. sh:flags "i" turns a sh:pattern into a
+#: case-insensitive one, and one more entry under sh:ignoredProperties exempts one more
+#: property from a sh:closed; either way the fixture defending that rule was chosen to
+#: fail under the narrower spelling, so it goes on failing for exactly its committed
+#: reason while the rule has widened. Stating no rule is not the same as moving none,
+#: so neither term is structure, neither has a fixture-shaped half to be audited as,
+#: and both are refused in phase 0 instead. The parameters they modify - sh:pattern and
+#: sh:closed - stay supported and audited like any other. This group is explicit rather
+#: than read off the validator, so a term added here is refused from that moment on and
+#: has to bring the evidence below that says why.
+UNSAFE_MODIFIERS = frozenset({SH.flags, SH.ignoredProperties})
+
+#: Every term phase 0 refuses outright. The audit searches the shapes graph for each of
+#: these, so the two groups above are the whole of what may not be written.
+FORBIDDEN_PARAMETERS = QUALIFIED_FAMILY | UNSAFE_MODIFIERS
+
+
+class Unsupported(NamedTuple):
+    """A group of refused terms, and the sentence a reader who wrote one is given."""
+
+    name: str
+    terms: frozenset
+    why: str
+
+
+#: What the prohibition says, per group, so whoever wrote sh:flags is told about
+#: modifiers rather than about qualified counts: why the audit cannot hold the group,
+#: and what to write instead.
+UNSUPPORTED = (
+    Unsupported(
+        "the SHACL qualified family",
+        QUALIFIED_FAMILY,
+        "A qualified constraint states two things - how many values, and which values "
+        "count - and only the count has a shape a fixture can be written against: a "
+        "fixture that trips sh:qualifiedMinCount trips it at any value shape, so a wider "
+        "sh:qualifiedValueShape loosens the rule with the whole suite green. Write the "
+        "rule some other way - sh:node with sh:minCount, or a separately targeted named "
+        "shape - or raise the boundary as a decision before moving it.",
+    ),
+    Unsupported(
+        "the SHACL modifiers that move the rule beside them",
+        UNSAFE_MODIFIERS,
+        "A modifier decides where the parameter beside it draws its line without changing "
+        "which rule is stated, so the fixture defending that rule goes on failing for its "
+        "committed reason once the rule has widened: sh:flags beside a sh:pattern, one "
+        "more entry under sh:ignoredProperties beside a sh:closed. The parameter itself is "
+        "supported - write the rule it states on its own, as a pattern spelling out every "
+        "form it accepts or a closed shape declaring the property it means to allow - or "
+        "raise the boundary as a decision before moving it.",
+    ),
+)
+
 #: The parameters pyshacl enforces that state no rule on their own, each with the
 #: reason. Together with CONSTRAINT_PARAMETERS and FORBIDDEN_PARAMETERS this accounts
 #: for every term the validator acts on, which is what stops those sets falling
-#: silently behind the validator the way they did for the qualified counts.
+#: silently behind the validator the way they did for the qualified counts. Stating no
+#: rule alone does not on its own earn a term a place here: sh:ignoredProperties states
+#: none either and is refused above, because a term that states no rule can still move
+#: one.
 NOT_A_CONSTRAINT_ALONE = frozenset(
     {
         # Structural: the block each of these reaches is enumerated and audited as a
@@ -121,8 +183,6 @@ NOT_A_CONSTRAINT_ALONE = frozenset(
         # would demand two messages for one rule.
         SH.property,
         SH.sparql,
-        # Optional: tunes the parameter beside it rather than stating a rule.
-        SH.ignoredProperties,
     }
 )
 
@@ -131,14 +191,14 @@ NOT_A_CONSTRAINT_ALONE = frozenset(
 #: state no rule without another one beside them. Everything else in the sh: namespace
 #: reads as a constraint, so this is the list that has to be extended - deliberately,
 #: and with the knowledge that the guarantee gives up one term - when the shapes file
-#: starts using a SHACL term that enforces nothing. A term listed here can still
-#: loosen the rule beside it: sh:flags "i" on a sh:pattern, another entry under
-#: sh:ignoredProperties. Neither can move which rule is stated, and the fixture that
-#: trips the rule they qualify is what holds them - which is exactly what stopped
-#: being true for sh:qualifiedValueShape, and why the qualified family is forbidden
-#: above rather than listed here. A constraint stated outside the sh: namespace, as a
-#: custom constraint component, is beyond what this audits and beyond what this shapes
-#: file writes.
+#: starts using a SHACL term that enforces nothing. Enforcing nothing is not enough: a
+#: term listed here must also be unable to move where a rule beside it draws its line,
+#: because the fixture defending that rule was written against the line as it stood and
+#: goes on failing for its committed reason once it has moved. That is what stopped
+#: being true for sh:qualifiedValueShape, and it was never true for sh:flags or
+#: sh:ignoredProperties, which is why both groups are refused above rather than listed
+#: here. A constraint stated outside the sh: namespace, as a custom constraint
+#: component, is beyond what this audits and beyond what this shapes file writes.
 SHAPE_PREDICATES = frozenset(
     {
         # Structure. Each block these reach is enumerated as a constraint of its own.
@@ -158,9 +218,6 @@ SHAPE_PREDICATES = frozenset(
         SH.order,
         SH.group,
         SH.deactivated,
-        # Modifiers: meaningless alone, each qualifies a parameter beside it.
-        SH.flags,
-        SH.ignoredProperties,
         # SPARQL plumbing: how a query is written down, not what it asks.
         SH.prefixes,
         SH.declare,
@@ -277,12 +334,13 @@ def _name(shapes, node) -> str:
     return "-".join([_where(shapes, node), *sorted(_local(p) for p in _parameters(shapes, node))])
 
 
-def _qualified_terms(shapes) -> list:
-    """Every qualified-family term ``shapes`` writes, each with the block writing it.
+def _forbidden_terms(shapes) -> list:
+    """Every refused term ``shapes`` writes, each with the block writing it.
 
     Read from the graph rather than from the file's text, so a spelling reaches this
     however it is written: value shape named or inline, counts together in one block or
-    split across two, nested inside another shape or stated straight onto a node shape.
+    split across two, a modifier beside the parameter it moves or alone, nested inside
+    another shape or stated straight onto a node shape.
     """
     return sorted(
         {
@@ -293,17 +351,31 @@ def _qualified_terms(shapes) -> list:
     )
 
 
+def _groups_of(written: list) -> list:
+    """The refused groups the reported terms belong to, in declaration order."""
+    return [
+        group
+        for group in UNSUPPORTED
+        if any(entry.endswith(f": sh:{_local(term)}") for term in group.terms for entry in written)
+    ]
+
+
 def _prohibition(written: list) -> str:
-    return (
-        f"the SHACL qualified family is not supported in phase 0, and the shapes graph "
-        f"writes {written}. A qualified constraint states two things - how many values, "
-        f"and which values count - and only the count has a shape a fixture can be "
-        f"written against: a fixture that trips sh:qualifiedMinCount trips it at any "
-        f"value shape, so a wider sh:qualifiedValueShape loosens the rule with the whole "
-        f"suite green. Write the rule some other way - sh:node with sh:minCount, or a "
-        f"separately targeted named shape - or raise the boundary as a decision before "
-        f"moving it. Adding any of these terms to CONSTRAINT_PARAMETERS or to "
-        f"SHAPE_PREDICATES is the silent loosening this refuses, not a way around it."
+    """What the build says when a refused term reaches the shapes graph.
+
+    Only the groups actually written are explained, because a reader who added
+    sh:flags is not helped by a paragraph about qualified counts.
+    """
+    groups = _groups_of(written)
+    return " ".join(
+        [
+            f"phase 0 does not support {' and '.join(group.name for group in groups)}, and "
+            f"the shapes graph writes {written}.",
+            *(group.why for group in groups),
+            "Adding any of these terms to CONSTRAINT_PARAMETERS, to SHAPE_PREDICATES or to "
+            "NOT_A_CONSTRAINT_ALONE is the silent loosening this refuses, not a way around "
+            "it.",
+        ]
     )
 
 
@@ -391,34 +463,43 @@ def test_no_constraint_parameter_is_classified_as_structure():
     )
 
 
-def test_no_forbidden_parameter_is_also_supported_or_structural():
-    """A forbidden term is forbidden and nothing else, or it is not forbidden at all.
+def test_no_forbidden_parameter_is_classified_anywhere_else():
+    """A refused term is refused and nothing else, or it is not refused at all.
 
-    The three classifications are what the audit acts on, and a term in two of them is
-    read by whichever rule looks first. Listing a qualified term as structure is the
-    move that opened the hole this file now refuses - ``_parameters`` stops seeing it,
-    and the prohibition below is the only thing left standing between it and a green
-    suite. Overlapping it with the supported set is the same weakening written the
-    other way round.
+    The classifications are what the audit acts on, and a term in two of them is read
+    by whichever rule looks first. Listing a qualified term as structure is the move
+    that opened the hole this file now refuses - ``_parameters`` stops seeing it, and
+    the prohibition below is the only thing left standing between it and a green suite.
+    Filing a refused term as a supported parameter, or as one that states no rule
+    alone, is the same weakening written the other two ways round - and the last of
+    those is the classification sh:ignoredProperties is being moved out of, so it is
+    the one a reader would reach for first.
     """
-    supported = sorted(_local(p) for p in FORBIDDEN_PARAMETERS & CONSTRAINT_PARAMETERS)
-    structural = sorted(_local(p) for p in FORBIDDEN_PARAMETERS & SHAPE_PREDICATES)
-    assert not supported and not structural, (
-        f"the qualified family is not supported in phase 0, and {supported or structural} "
-        f"is listed as {'a supported constraint parameter' if supported else 'structure'} "
-        f"as well. A term cannot be both refused and classified: pick one, and if the "
-        f"boundary is to move, move it as a decision rather than as an overlap."
+    elsewhere = {
+        name: sorted(_local(p) for p in FORBIDDEN_PARAMETERS & classified)
+        for name, classified in (
+            ("CONSTRAINT_PARAMETERS", CONSTRAINT_PARAMETERS),
+            ("SHAPE_PREDICATES", SHAPE_PREDICATES),
+            ("NOT_A_CONSTRAINT_ALONE", NOT_A_CONSTRAINT_ALONE),
+        )
+        if FORBIDDEN_PARAMETERS & classified
+    }
+    assert not elsewhere, (
+        f"phase 0 refuses these terms and this file classifies them as well: {elsewhere}. "
+        f"A term cannot be both refused and classified: pick one, and if the boundary is "
+        f"to move, move it as a decision rather than as an overlap."
     )
 
 
 def test_the_whole_qualified_family_is_forbidden():
     """The prohibition covers the family, not the terms somebody remembered.
 
-    FORBIDDEN_PARAMETERS is hand-written, so on its own it says only that four terms
-    were typed once. Reading the family off the validator instead is what makes moving
-    one of them into CONSTRAINT_PARAMETERS or SHAPE_PREDICATES a red build rather than
-    a quiet narrowing of what is refused, and what makes a qualified term SHACL gains
-    later refused on arrival instead of admitted by omission.
+    QUALIFIED_FAMILY is hand-written, so on its own it says only that four terms were
+    typed once. Reading the family off the validator instead is what makes moving one of
+    them into another classification a red build rather than a quiet narrowing of what is
+    refused, and what makes a qualified term SHACL gains later refused on arrival instead
+    of admitted by omission. UNSAFE_MODIFIERS has no such spelling to read, and is
+    anchored by the evidence each of its terms carries instead.
     """
     family = {p for p in ALL_CONSTRAINT_PARAMETERS if _local(p).startswith("qualified")}
     assert family, "pyshacl enforces no qualified parameter; this test proves nothing"
@@ -427,7 +508,7 @@ def test_the_whole_qualified_family_is_forbidden():
         f"pyshacl enforces {unforbidden} as part of the qualified family, and this file "
         f"does not refuse them. Every term of that family is prohibited in phase 0, "
         f"because the value-shape half of what it states cannot be held by a fixture. "
-        f"Add each to FORBIDDEN_PARAMETERS."
+        f"Add each to QUALIFIED_FAMILY."
     )
 
 
@@ -483,14 +564,15 @@ def test_each_classification_accounts_for_a_term_once():
     )
 
 
-def test_the_shapes_file_writes_no_qualified_constraint():
+def test_the_shapes_file_writes_no_refused_term():
     """The prohibition, against the shapes file the build actually validates.
 
-    Everything else about the qualified family here is checked against graphs written
-    in this file. This is the one that reads ontology/shapes/biz.ttl, so adding a
-    qualified term there fails the build by name whatever else the audit makes of it.
+    Everything else about the refused groups here is checked against graphs written in
+    this file. This is the one that reads ontology/shapes/biz.ttl, so adding a
+    qualified term or an unsafe modifier there fails the build by name whatever else
+    the audit makes of it.
     """
-    written = _qualified_terms(SHAPES)
+    written = _forbidden_terms(SHAPES)
     assert not written, _prohibition(written)
 
 
@@ -522,7 +604,8 @@ def test_each_message_belongs_to_exactly_one_constraint(name, message, parameter
     assert len(parameters) == 1, (
         f"{name}: expected exactly one constraint parameter under this message, found "
         f"{sorted(_local(p) for p in parameters)}. Split the block, or - if one of those "
-        f"terms constrains nothing - add it to SHAPE_PREDICATES."
+        f"terms constrains nothing and moves nothing - add it to SHAPE_PREDICATES. A term "
+        f"phase 0 refuses is neither, and belongs in neither."
     )
 
 
@@ -550,7 +633,8 @@ def test_each_constraint_carries_exactly_one_message(name, parameters, messages)
     assert len(parameters) == 1, (
         f"{name}: expected exactly one constraint parameter in this block, found "
         f"{sorted(_local(p) for p in parameters)}. Split the block, or - if one of those "
-        f"terms constrains nothing - add it to SHAPE_PREDICATES."
+        f"terms constrains nothing and moves nothing - add it to SHAPE_PREDICATES. A term "
+        f"phase 0 refuses is neither, and belongs in neither."
     )
     assert len(messages) == 1, (
         f"{name} carries no single sh:message ({len(messages)} found), so it is invisible "
@@ -561,9 +645,11 @@ def test_each_constraint_carries_exactly_one_message(name, parameters, messages)
 
 
 PREFIXES = """
-@prefix biz: <https://semantic-layer.19h09.co/vocab/biz#> .
-@prefix sh:  <http://www.w3.org/ns/shacl#> .
-@prefix shp: <https://semantic-layer.19h09.co/shapes/biz#> .
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix shp:  <https://semantic-layer.19h09.co/shapes/biz#> .
 """
 
 #: Two shapes written inline, the two ways SHACL allows: nested under a shape-valued
@@ -696,6 +782,21 @@ shp:CapabilityValueShape a sh:NodeShape ; sh:class biz:Capability .
 """
 
 
+def _node_shape_stating(block: str) -> str:
+    """A shapes graph whose one node shape states ``block`` directly.
+
+    Where sh:closed and the properties it ignores are written in practice: on the shape
+    itself rather than inside a property block.
+    """
+    return f"""{PREFIXES}
+shp:RoleShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Role ;
+    {block}
+    .
+"""
+
+
 def _qualified_minimum_over(value_shape: str) -> str:
     """A sh:qualifiedMinCount of one, counting whatever ``value_shape`` admits."""
     return f"""{PREFIXES}
@@ -713,6 +814,127 @@ shp:RoleShape
 shp:CapabilityValueShape a sh:NodeShape ; sh:class biz:Capability .
 shp:AnyIdentifiedValueShape a sh:NodeShape ; sh:nodeKind sh:IRI .
 """
+
+
+#: Both modifiers written where a shape nests another: inside an sh:node, under a
+#: property shape. Nothing about the refusal reads the top level of the graph, and this
+#: is the spelling that says so.
+MODIFIERS_ON_A_NESTED_SHAPE = (
+    PREFIXES
+    + """
+shp:RoleShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Role ;
+
+    sh:property [
+        sh:path biz:permits ;
+        sh:node [
+            sh:closed true ;
+            sh:ignoredProperties ( rdf:type ) ;
+            sh:pattern "^[a-z]+$" ;
+            sh:flags "i" ;
+        ] ;
+    ] .
+"""
+)
+
+#: Every spelling of an unsafe modifier the prohibition has to catch: each term beside
+#: the parameter it moves, each on its own, and both nested inside another shape. A
+#: modifier written alone states nothing at all, which is exactly why it has to be
+#: refused there too - it is the arrangement that gets added first and completed later.
+UNSAFE_MODIFIER_SPELLINGS = (
+    (
+        "flags beside a pattern",
+        _role_shape_stating('sh:pattern "^[a-z]+$" ; sh:flags "i" ;'),
+        ["RoleShape-permits: sh:flags"],
+    ),
+    (
+        "flags alone",
+        _role_shape_stating('sh:flags "i" ;'),
+        ["RoleShape-permits: sh:flags"],
+    ),
+    (
+        "ignored properties beside a closed shape",
+        _node_shape_stating("sh:closed true ; sh:ignoredProperties ( rdf:type ) ;"),
+        ["RoleShape: sh:ignoredProperties"],
+    ),
+    (
+        "ignored properties alone",
+        _node_shape_stating("sh:ignoredProperties ( rdf:type ) ;"),
+        ["RoleShape: sh:ignoredProperties"],
+    ),
+    (
+        "both on a nested property shape",
+        MODIFIERS_ON_A_NESTED_SHAPE,
+        ["RoleShape-permits-node: sh:flags", "RoleShape-permits-node: sh:ignoredProperties"],
+    ),
+)
+
+
+def _label_pattern_with(flags: str) -> str:
+    """A rule that a role's label is lower-case, with ``flags`` beside the pattern."""
+    return f"""{PREFIXES}
+shp:RoleShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Role ;
+
+    sh:property [
+        sh:path rdfs:label ;
+        sh:pattern "^[a-z ]+$" ;
+        {flags}
+        sh:message "Role {{$this}} has a label that is not lower-case." ;
+    ] .
+"""
+
+
+def _closed_role_ignoring(ignored: str) -> str:
+    """A role shape closed to all but biz:permits, also ignoring ``ignored``."""
+    return f"""{PREFIXES}
+shp:RoleShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Role ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type {ignored} ) ;
+    sh:message "Role {{$this}} carries a property this shape does not declare." ;
+
+    sh:property [ sh:path biz:permits ] .
+"""
+
+
+class Widening(NamedTuple):
+    """One modifier, moving a rule while the fixture defending that rule stays red.
+
+    ``committed`` is the graph a negative fixture would commit: rejected under both
+    spellings, and for the same message both times. ``moved`` is where the two disagree,
+    and it is the graph no fixture written against the parameter alone ever is.
+    """
+
+    narrow: str
+    widened: str
+    committed: str
+    moved: str
+    message: str
+
+
+#: The evidence that each unsafe modifier is unsafe, one entry per term, run against
+#: pyshacl rather than asserted. This is what anchors an otherwise hand-written family:
+#: a term dropped from UNSAFE_MODIFIERS while its widening still stands fails the build.
+MODIFIER_WIDENINGS = {
+    SH.flags: Widening(
+        narrow=_label_pattern_with(""),
+        widened=_label_pattern_with('sh:flags "i" ;'),
+        committed='biz:r a biz:Role ; rdfs:label "role 2" .',
+        moved='biz:r a biz:Role ; rdfs:label "Deploy Engineer" .',
+        message="Role {$this} has a label that is not lower-case.",
+    ),
+    SH.ignoredProperties: Widening(
+        narrow=_closed_role_ignoring(""),
+        widened=_closed_role_ignoring("rdfs:label"),
+        committed="biz:r a biz:Role ; biz:grantsRole biz:other .",
+        moved='biz:r a biz:Role ; rdfs:label "deploy engineer" .',
+        message="Role {$this} carries a property this shape does not declare.",
+    ),
+}
 
 
 def _data(body: str) -> Graph:
@@ -760,9 +982,9 @@ def test_every_spelling_of_a_qualified_constraint_is_refused(block, expected):
     be exercised is every way the family can reach that graph. A spelling missed here
     is a spelling that reaches biz.ttl with nothing to stop it.
     """
-    written = _qualified_terms(Graph().parse(data=_role_shape_stating(block), format="turtle"))
+    written = _forbidden_terms(Graph().parse(data=_role_shape_stating(block), format="turtle"))
     assert written == expected
-    assert "not supported in phase 0" in _prohibition(written)
+    assert "the SHACL qualified family" in _prohibition(written)
 
 
 def test_a_qualified_range_split_across_two_blocks_is_refused():
@@ -773,7 +995,7 @@ def test_a_qualified_range_split_across_two_blocks_is_refused():
     the same place, because the place to go and edit is the path, not the block.
     """
     shapes = Graph().parse(data=QUALIFIED_RANGE_IN_TWO_BLOCKS, format="turtle")
-    assert _qualified_terms(shapes) == [
+    assert _forbidden_terms(shapes) == [
         "RoleShape-permits: sh:qualifiedMaxCount",
         "RoleShape-permits: sh:qualifiedMinCount",
         "RoleShape-permits: sh:qualifiedValueShape",
@@ -798,3 +1020,92 @@ def test_a_qualified_value_shape_moves_the_rule_its_counts_state():
 
     assert _messages_against(strict, _data(ROLE_PERMITTING_A_GOAL)) == tripped
     assert _messages_against(widened, _data(ROLE_PERMITTING_A_GOAL)) == set()
+
+
+@pytest.mark.parametrize(
+    ("shapes", "expected"),
+    [spelling[1:] for spelling in UNSAFE_MODIFIER_SPELLINGS],
+    ids=[spelling[0] for spelling in UNSAFE_MODIFIER_SPELLINGS],
+)
+def test_every_spelling_of_an_unsafe_modifier_is_refused(shapes, expected):
+    """Each modifier beside its parameter, alone, and nested inside another shape.
+
+    The prohibition reads the parsed graph rather than the file's text, so what has to
+    be exercised is every way a modifier can reach that graph. A spelling missed here is
+    a spelling that reaches biz.ttl with nothing to stop it - and the message a reader
+    gets has to be the one about modifiers, not the one about qualified counts.
+    """
+    written = _forbidden_terms(Graph().parse(data=shapes, format="turtle"))
+    assert written == expected
+    assert "the SHACL modifiers that move the rule beside them" in _prohibition(written)
+
+
+def test_a_refused_term_in_a_second_shapes_file_is_refused(tmp_path):
+    """The shapes graph is every *.ttl under ontology/shapes/, loaded into one graph.
+
+    So a refused term is not made acceptable by being written in a file of its own,
+    which is the first thing a reader blocked by the prohibition would try. The audit
+    reads the loaded graph, and this reads it the way the build does - through
+    ``graph.turtle_files`` and ``graph.load`` - so both files report by the block that
+    wrote them.
+    """
+    (tmp_path / "biz.ttl").write_text(
+        _node_shape_stating("sh:ignoredProperties ( rdf:type ) ;"), encoding="utf-8"
+    )
+    (tmp_path / "extra.ttl").write_text(_role_shape_stating('sh:flags "i" ;'), encoding="utf-8")
+
+    assert _forbidden_terms(graph.load(graph.turtle_files(tmp_path))) == [
+        "RoleShape-permits: sh:flags",
+        "RoleShape: sh:ignoredProperties",
+    ]
+
+
+def test_the_unsafe_modifier_family_agrees_with_its_evidence_and_its_spellings():
+    """The one thing anchoring a family that cannot be read off the validator.
+
+    The qualified family is computed from ALL_CONSTRAINT_PARAMETERS, so narrowing it is
+    a red build. The modifiers have no such spelling in common: dropping sh:flags from
+    UNSAFE_MODIFIERS would take the prohibition with it and nothing else here would
+    notice. What stands in for the validator is the evidence each term has to carry - a
+    widening demonstrated against pyshacl, and a spelling proved refused - which a term
+    cannot be added without and cannot be removed while it stands.
+    """
+    family = sorted(_local(term) for term in UNSAFE_MODIFIERS)
+    demonstrated = sorted(_local(term) for term in MODIFIER_WIDENINGS)
+    refused = sorted(
+        {
+            name.rsplit(": sh:", 1)[-1]
+            for _, _, expected in UNSAFE_MODIFIER_SPELLINGS
+            for name in expected
+        }
+    )
+    assert family == demonstrated == refused, (
+        f"UNSAFE_MODIFIERS refuses {family}, MODIFIER_WIDENINGS shows {demonstrated} "
+        f"moving a rule, and UNSAFE_MODIFIER_SPELLINGS proves {refused} refused. The "
+        f"three are the whole of what makes this family more than a list somebody typed: "
+        f"a term added to it brings a widening and a spelling with it, and a term removed "
+        f"from it while either still stands fails here."
+    )
+
+
+@pytest.mark.parametrize(
+    ("term", "widening"),
+    sorted(MODIFIER_WIDENINGS.items(), key=lambda entry: str(entry[0])),
+    ids=[_local(term) for term in sorted(MODIFIER_WIDENINGS, key=str)],
+)
+def test_each_unsafe_modifier_moves_the_rule_beside_it(term, widening):
+    """The reason for the prohibition, run against the validator rather than asserted.
+
+    A modifier changes where its parameter draws the line, and the fixture defending
+    that parameter cannot see it: the graph a fixture commits is rejected under both
+    spellings, with the same message both times, so it goes on failing for exactly its
+    committed reason while the rule it was committed against has moved. The graph where
+    the two disagree is the one no such fixture is.
+    """
+    tripped = {widening.message}
+
+    assert _messages_against(widening.narrow, _data(widening.committed)) == tripped
+    assert _messages_against(widening.widened, _data(widening.committed)) == tripped
+
+    assert _messages_against(widening.narrow, _data(widening.moved)) == tripped
+    assert _messages_against(widening.widened, _data(widening.moved)) == set()

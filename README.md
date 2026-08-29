@@ -56,14 +56,17 @@ tests/
    cannot fall behind the validator. That pairing is itself checked rather than
    believed, so no constraint can be removed, loosened or added without a fixture that
    says what it was for.
-4. One SHACL family is refused rather than covered, and the refusal is what is
-   guaranteed about it: the qualified family - `sh:qualifiedValueShape`,
-   `sh:qualifiedMinCount`, `sh:qualifiedMaxCount`, `sh:qualifiedValueShapesDisjoint`.
-   Such a constraint states how many values *and* which values count, and a fixture can
-   only be written against the count: widening the value shape loosens the rule while
-   every fixture goes on failing for exactly its committed reason. Rather than claim a
-   coverage guarantee that would not hold for it, phase 0 prohibits the whole family in
-   the shapes file, by name and by term. Nothing in the shapes file uses it.
+4. Two groups of SHACL terms are refused rather than covered, and the refusal is what
+   is guaranteed about them. The qualified family - `sh:qualifiedValueShape`,
+   `sh:qualifiedMinCount`, `sh:qualifiedMaxCount`, `sh:qualifiedValueShapesDisjoint` -
+   states how many values *and* which values count, and a fixture can only be written
+   against the count. The modifiers `sh:flags` and `sh:ignoredProperties` decide where
+   the parameter beside them draws its line, and a fixture is written against the
+   parameter. Either way the rule can be widened while every fixture goes on failing for
+   exactly its committed reason. Rather than claim a coverage guarantee that would not
+   hold for them, phase 0 prohibits both groups in the shapes file, by name and by term.
+   The parameters the modifiers move - `sh:pattern`, `sh:closed` - are supported and
+   audited like any other. Nothing in the shapes file uses any of it.
 5. Every competency question returns its committed answer, so a vocabulary change that
    stops the model answering a business question fails the build.
 6. Every committed entity carries exactly the identifier minting would give it, so a
