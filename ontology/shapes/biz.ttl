@@ -20,7 +20,7 @@
 <https://semantic-layer.19h09.co/shapes/biz>
     a owl:Ontology ;
     rdfs:label "Semantic layer business shapes (L1)" ;
-    owl:versionInfo "0.1.0" ;
+    owl:versionInfo "0.2.0" ;
     sh:declare [ sh:prefix "biz"  ; sh:namespace "https://semantic-layer.19h09.co/vocab/biz#"^^xsd:anyURI ] ,
                [ sh:prefix "core" ; sh:namespace "https://semantic-layer.19h09.co/vocab/core#"^^xsd:anyURI ] ,
                [ sh:prefix "rdf"  ; sh:namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"^^xsd:anyURI ] ,
@@ -158,6 +158,14 @@ shp:AssignmentShape
 # repository, an environment - is an L2 fact, and an L2 fact in L1 gives business
 # truth an expiry date it has no way to honour. Adding a term to the vocabulary is
 # how the allowance grows; there is no separate list to keep in step.
+#
+# The GRAPH clause is what makes that true rather than merely intended. SHACL judges
+# one graph and cannot see where a triple came from, so if the vocabulary were merged
+# flat into the data under validation, an instance file asserting
+# `tech:productionEndpoint rdfs:isDefinedBy <.../vocab/biz>` would be granting itself
+# the allowance and this constraint would agree. Asking inside the vocabulary's own
+# named graph means only the vocabulary can answer, and an instance file cannot reach
+# that graph: Turtle has no syntax for naming one. See graph.data_graph.
 
 shp:L1BoundaryShape
     a sh:NodeShape ;
@@ -172,7 +180,7 @@ shp:L1BoundaryShape
             WHERE {
                 $this ?property ?object .
                 FILTER NOT EXISTS {
-                    ?property rdfs:isDefinedBy ?vocabulary .
+                    GRAPH ?vocabulary { ?property rdfs:isDefinedBy ?vocabulary }
                     FILTER ( ?vocabulary IN (
                         <https://semantic-layer.19h09.co/vocab/core> ,
                         <https://semantic-layer.19h09.co/vocab/biz>

@@ -24,6 +24,13 @@ packages = ["src/semantic_layer"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = [
+    # rdflib 7.6 reaches for its own deprecated Dataset accessors whenever it walks a
+    # default_union dataset or evaluates a GRAPH pattern over one. Both are rdflib's
+    # own lines, not this repository's, and there is no call here that avoids them.
+    "ignore:Dataset.default_context is deprecated:DeprecationWarning:rdflib",
+    "ignore:Dataset.contexts is deprecated:DeprecationWarning:rdflib",
+]
 
 [tool.ruff]
 line-length = 100

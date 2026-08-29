@@ -43,6 +43,16 @@ second allowlist to keep in step. Adding a *technical* term to the business voca
 is therefore how the L1/L2 boundary would be breached, and it is a review question, not
 a mechanical one.
 
+It is also the *only* route, which is worth stating because it was once not true. SHACL
+judges one graph and cannot see where a triple came from, so while the vocabulary was
+merged flat into the data under validation, an instance file could assert
+`tech:productionEndpoint rdfs:isDefinedBy <.../vocab/biz>` and the boundary shape would
+believe it - a breach needing no vocabulary edit at all, and so nothing for a reviewer
+of `ontology/biz.ttl` to see. Each vocabulary now loads into a named graph of its own
+and the shape asks inside it, and Turtle has no syntax for naming a graph, so only a
+vocabulary can say what a vocabulary defines. The mechanism is in `graph.data_graph`;
+the reason it is shaped that way is here.
+
 ## Adding an entity
 
 1. Mint the identifier with the rules in [identifiers.md](identifiers.md).

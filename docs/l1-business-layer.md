@@ -65,6 +65,12 @@ properties defined by the core or business vocabularies, plus the standard RDF
 annotations. Anything else is rejected with a message saying so
 (`ontology/shapes/biz.ttl`, `shp:L1BoundaryShape`).
 
+And it is enforced against the data it is judging, not only against honest data. The
+vocabularies are loaded into named graphs of their own and the shape asks its question
+inside them, so a file cannot grant itself the allowance by declaring a technical term
+to be part of L1. Widening the boundary takes a vocabulary edit, which is a reviewed
+change to a small file, and [evolution.md](evolution.md) says what to look for.
+
 ## What the model can be asked
 
 Three questions are committed as queries in `queries/`, with their answers committed
