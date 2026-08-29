@@ -56,9 +56,17 @@ tests/
    cannot fall behind the validator. That pairing is itself checked rather than
    believed, so no constraint can be removed, loosened or added without a fixture that
    says what it was for.
-4. Every competency question returns its committed answer, so a vocabulary change that
+4. One SHACL family is refused rather than covered, and the refusal is what is
+   guaranteed about it: the qualified family - `sh:qualifiedValueShape`,
+   `sh:qualifiedMinCount`, `sh:qualifiedMaxCount`, `sh:qualifiedValueShapesDisjoint`.
+   Such a constraint states how many values *and* which values count, and a fixture can
+   only be written against the count: widening the value shape loosens the rule while
+   every fixture goes on failing for exactly its committed reason. Rather than claim a
+   coverage guarantee that would not hold for it, phase 0 prohibits the whole family in
+   the shapes file, by name and by term. Nothing in the shapes file uses it.
+5. Every competency question returns its committed answer, so a vocabulary change that
    stops the model answering a business question fails the build.
-5. Every committed entity carries exactly the identifier minting would give it, so a
+6. Every committed entity carries exactly the identifier minting would give it, so a
    fixture cannot leak into curated content - and an entity written with no identifier
    at all is rejected rather than skipped.
 

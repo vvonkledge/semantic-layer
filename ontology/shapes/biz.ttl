@@ -6,12 +6,17 @@
 # message. tests/test_shape_coverage.py checks that pairing holds for every constraint
 # in this file - inside a sh:property block, inside a sh:sparql block, stated straight
 # onto a node shape the way sh:nodeKind is below, or nested inside another shape under
-# sh:qualifiedValueShape or in an sh:or list - so a constraint cannot be removed,
-# loosened or added without a fixture that says what it was for. A qualified range is
-# written as two blocks, one count each: sh:qualifiedMinCount and sh:qualifiedMaxCount
-# are two rules, and one message over both would defend only whichever of them a
-# fixture happens to trip. The claim in this comment is therefore kept by the suite
-# rather than by whoever last edited the file.
+# sh:node or in an sh:or list - so a constraint cannot be removed, loosened or added
+# without a fixture that says what it was for. The claim in this comment is therefore
+# kept by the suite rather than by whoever last edited the file.
+#
+# One SHACL family may not be written here at all in phase 0, and the suite refuses it
+# by name: sh:qualifiedValueShape, sh:qualifiedMinCount, sh:qualifiedMaxCount and
+# sh:qualifiedValueShapesDisjoint. Such a constraint states how many values and which
+# values count, and only the count can be held by a fixture - a wider value shape
+# loosens the rule while every fixture still fails for its committed reason. Where a
+# qualified constraint is what a business rule needs, write it as sh:node beside a
+# count, or as a shape targeted in its own right, or move the boundary deliberately.
 #
 # Validation is a batch pass over a finished graph, never a write-time check. The
 # authorization rule below is the reason: a graph is assembled edge by edge, and the
