@@ -49,12 +49,16 @@ tests/
 2. Every negative fixture is rejected, **and rejected for its intended reason** - the
    exact message is committed beside the fixture, so a shape cannot silently stop
    enforcing while something else keeps failing in its place.
-3. Every competency question returns its committed answer, so a vocabulary change that
+3. Every constraint in `ontology/shapes/biz.ttl` has such a fixture. That pairing is
+   itself checked rather than believed, so no constraint can be removed, loosened or
+   added without a fixture that says what it was for.
+4. Every competency question returns its committed answer, so a vocabulary change that
    stops the model answering a business question fails the build.
-4. Every committed entity carries exactly the identifier minting would give it, so a
-   fixture cannot leak into curated content.
+5. Every committed entity carries exactly the identifier minting would give it, so a
+   fixture cannot leak into curated content - and an entity written with no identifier
+   at all is rejected rather than skipped.
 
-The whole suite is deterministic and runs in under a second.
+The whole suite is deterministic and runs in under two seconds.
 
 ## Scope
 

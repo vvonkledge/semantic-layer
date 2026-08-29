@@ -1,0 +1,1 @@
+Role https://semantic-layer.19h09.co/fixture/biz/role/service-maintainer permits https://semantic-layer.19h09.co/fixture/biz/goal/checkout-reliability, which is not a Capability. A role permits what may be done, not who may do it.

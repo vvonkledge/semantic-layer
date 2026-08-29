@@ -1,9 +1,12 @@
 # SHACL shapes for the L1 business layer.
 #
-# Every shape carries a message written for the person who tripped it, because the
-# message is the only part of a shape anybody reads. Each shape has a matching
-# negative fixture under ontology/instances/fixtures/invalid/ that asserts the exact
-# message, so a shape cannot silently stop enforcing.
+# Every constraint carries a message written for the person who tripped it, because the
+# message is the only part of a shape anybody reads. One constraint, one message, one
+# negative fixture under ontology/instances/fixtures/invalid/ asserting that exact
+# message. tests/test_shape_coverage.py checks that pairing holds for every constraint
+# in this file, so a constraint cannot be removed, loosened or added without a fixture
+# that says what it was for. The claim in this comment is therefore kept by the suite
+# rather than by whoever last edited the file.
 #
 # Validation is a batch pass over a finished graph, never a write-time check. The
 # authorization rule below is the reason: a graph is assembled edge by edge, and the
@@ -88,6 +91,10 @@ shp:RoleShape
     ] .
 
 ## Assignment: complete, well-aimed, and authorized.
+#
+# Each of the four edges is checked three times - present, single, and well-aimed -
+# and each check carries its own message. Sharing one message across "none" and
+# "more than one" would read as one rule and regress as two.
 
 shp:AssignmentShape
     a sh:NodeShape ;
@@ -96,8 +103,13 @@ shp:AssignmentShape
     sh:property [
         sh:path biz:assignedTo ;
         sh:minCount 1 ;
+        sh:message "Assignment {$this} names no agent identity with biz:assignedTo. Work nobody is named for cannot be attributed afterwards." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:assignedTo ;
         sh:maxCount 1 ;
-        sh:message "Assignment {$this} must name exactly one agent identity with biz:assignedTo. Work nobody is named for cannot be attributed afterwards." ;
+        sh:message "Assignment {$this} names more than one agent identity with biz:assignedTo. One assignment, one assignee; two agents on one piece of work is two assignments, or nobody is answerable for the run." ;
     ] ;
 
     sh:property [
@@ -109,8 +121,13 @@ shp:AssignmentShape
     sh:property [
         sh:path biz:targetsCapability ;
         sh:minCount 1 ;
+        sh:message "Assignment {$this} names no capability with biz:targetsCapability. Without one there is nothing to authorize the assignee against." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:targetsCapability ;
         sh:maxCount 1 ;
-        sh:message "Assignment {$this} must name exactly one capability with biz:targetsCapability. Without it there is nothing to authorize the assignee against." ;
+        sh:message "Assignment {$this} names more than one capability with biz:targetsCapability. Permission is granted per capability, so an assignment spanning two of them hides which permission it actually needed." ;
     ] ;
 
     sh:property [
@@ -122,8 +139,13 @@ shp:AssignmentShape
     sh:property [
         sh:path biz:servesGoal ;
         sh:minCount 1 ;
+        sh:message "Assignment {$this} names no goal with biz:servesGoal. Work with no stated outcome cannot be prioritized, judged or stopped for a reason." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:servesGoal ;
         sh:maxCount 1 ;
-        sh:message "Assignment {$this} must name exactly one goal with biz:servesGoal. Work with no stated outcome cannot be prioritized, judged or stopped for a reason." ;
+        sh:message "Assignment {$this} names more than one goal with biz:servesGoal. Work serving two outcomes cannot be stopped for one of them; split it." ;
     ] ;
 
     sh:property [
@@ -135,8 +157,13 @@ shp:AssignmentShape
     sh:property [
         sh:path biz:governedBy ;
         sh:minCount 1 ;
+        sh:message "Assignment {$this} names no governing policy with biz:governedBy. An agent may not act under an unstated policy." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:governedBy ;
         sh:maxCount 1 ;
-        sh:message "Assignment {$this} must name exactly one governing policy with biz:governedBy. An agent may not act under an unstated policy." ;
+        sh:message "Assignment {$this} names more than one governing policy with biz:governedBy. Two policies leave the agent to decide which one it is acting under, which is the decision a policy exists to take away." ;
     ] ;
 
     sh:property [
@@ -145,6 +172,10 @@ shp:AssignmentShape
         sh:message "Assignment {$this} is governed by {?value}, which is not a Policy." ;
     ] ;
 
+    # The target is required to be a Capability here so that an assignment aimed at
+    # the wrong kind of thing reports that, once, rather than also reporting that no
+    # role permits it - which is true of anything that is not a capability, and tells
+    # the reader nothing they can act on.
     sh:sparql [
         a sh:SPARQLConstraint ;
         sh:message "Assignment {$this} assigns {?agent} to capability {?capability}, but {?agent} holds no role permitting it. Authorization is not implied by being asked." ;
@@ -154,6 +185,7 @@ shp:AssignmentShape
             WHERE {
                 $this biz:assignedTo ?agent ;
                       biz:targetsCapability ?capability .
+                ?capability a biz:Capability .
                 FILTER NOT EXISTS { ?agent biz:grantsRole/biz:permits ?capability }
             }
         """ ;

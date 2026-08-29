@@ -1,0 +1,1 @@
+Assignment https://semantic-layer.19h09.co/fixture/biz/assignment/jointly-assigned names more than one agent identity with biz:assignedTo. One assignment, one assignee; two agents on one piece of work is two assignments, or nobody is answerable for the run.

@@ -1,0 +1,1 @@
+Capability https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing is owned by https://semantic-layer.19h09.co/fixture/biz/role/service-maintainer, which is not an Actor. Ownership lands on a person, a team or an agent identity.

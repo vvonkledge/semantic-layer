@@ -1,0 +1,37 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:      <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core:     <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix goal:     <https://semantic-layer.19h09.co/fixture/biz/goal/> .
+@prefix cap:      <https://semantic-layer.19h09.co/fixture/biz/capability/> .
+@prefix team:     <https://semantic-layer.19h09.co/fixture/biz/team/> .
+@prefix agent:    <https://semantic-layer.19h09.co/fixture/biz/agent/> .
+@prefix role:     <https://semantic-layer.19h09.co/fixture/biz/role/> .
+@prefix policy:   <https://semantic-layer.19h09.co/fixture/biz/policy/> .
+@prefix asg:      <https://semantic-layer.19h09.co/fixture/biz/assignment/> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Two agents on one assignment, both properly authorized. When it goes wrong there is
+# still no single answer to who ran it.
+asg:jointly-assigned
+    a biz:Assignment ;
+    rdfs:label "Work handed to two agents at once" ;
+    biz:assignedTo agent:remediator , agent:second-remediator ;
+    biz:targetsCapability cap:payment-processing ;
+    biz:servesGoal goal:checkout-reliability ;
+    biz:governedBy policy:production-change-review .
+
+agent:second-remediator a biz:AgentIdentity ; rdfs:label "Second remediation agent" ;
+    biz:grantsRole role:service-maintainer .
+
+agent:remediator a biz:AgentIdentity ; rdfs:label "Remediation agent" ;
+    biz:grantsRole role:service-maintainer .
+role:service-maintainer a biz:Role ; rdfs:label "Service maintainer" ;
+    biz:permits cap:payment-processing .
+cap:payment-processing a biz:Capability ; rdfs:label "Payment processing" ;
+    biz:ownedBy team:payments .
+goal:checkout-reliability a biz:Goal ; rdfs:label "Checkout reliability" .
+policy:production-change-review a biz:Policy ; rdfs:label "Production change review" .
+team:payments a biz:Team ; rdfs:label "Payments team" .

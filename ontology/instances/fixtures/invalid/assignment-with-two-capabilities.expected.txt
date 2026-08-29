@@ -1,0 +1,1 @@
+Assignment https://semantic-layer.19h09.co/fixture/biz/assignment/double-targeted names more than one capability with biz:targetsCapability. Permission is granted per capability, so an assignment spanning two of them hides which permission it actually needed.

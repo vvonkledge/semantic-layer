@@ -1,0 +1,27 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:      <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core:     <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix goal:     <https://semantic-layer.19h09.co/fixture/biz/goal/> .
+@prefix cap:      <https://semantic-layer.19h09.co/fixture/biz/capability/> .
+@prefix team:     <https://semantic-layer.19h09.co/fixture/biz/team/> .
+@prefix agent:    <https://semantic-layer.19h09.co/fixture/biz/agent/> .
+@prefix role:     <https://semantic-layer.19h09.co/fixture/biz/role/> .
+@prefix policy:   <https://semantic-layer.19h09.co/fixture/biz/policy/> .
+@prefix asg:      <https://semantic-layer.19h09.co/fixture/biz/assignment/> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Pointed at another capability instead of at an outcome. Capabilities compose in
+# practice, but the model records what each one is *for*, and that is always a goal.
+cap:fraud-screening
+    a biz:Capability ;
+    rdfs:label "Fraud screening" ;
+    biz:ownedBy team:risk ;
+    biz:supports cap:payment-processing .
+
+cap:payment-processing a biz:Capability ; rdfs:label "Payment processing" ;
+    biz:ownedBy team:payments .
+team:risk     a biz:Team ; rdfs:label "Risk team" .
+team:payments a biz:Team ; rdfs:label "Payments team" .
