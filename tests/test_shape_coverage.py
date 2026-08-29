@@ -9,7 +9,9 @@ loosen one and the fixture conforms.
 
 The claim used to live only in a comment at the top of the shapes file, and it was
 false for ten of the seventeen constraints. Auditing it by eye is what failed, so it
-is audited here instead, and a constraint added without a fixture fails this file.
+is audited here instead, and a constraint added without a fixture fails this file -
+wherever in a shape it is written, and whether or not this file has heard of the
+parameter that states it.
 """
 
 import re
@@ -19,23 +21,95 @@ from rdflib import SH, URIRef
 
 from semantic_layer import graph
 
-#: The SHACL constraint parameters this shapes file uses. A parameter missing from
-#: this set reads as no constraint at all; every block that could hold one is counted
-#: below, so an unknown parameter fails that count rather than passing quietly - and
-#: the fix when it fires is to add the parameter here.
+#: The SHACL Core constraint parameters, by family, plus the SPARQL constraint's own.
+#: Completeness of the audit does not rest on this set - ``_parameters`` reads every
+#: unrecognized sh: term as a constraint, so a parameter missing here still fails
+#: rather than passing quietly. Its job is the opposite one: to fail the build if a
+#: parameter is ever classified as structure below, which is the single way the
+#: complement rule can be made to lie. Two Core parameters are deliberately absent:
+#: sh:property and sh:sparql, which do constrain, but whose block is enumerated and
+#: audited as a constraint in its own right rather than counted against its parent.
 CONSTRAINT_PARAMETERS = frozenset(
     {
+        # Cardinality.
         SH.minCount,
         SH.maxCount,
+        # Value type.
         SH["class"],
         SH.datatype,
         SH.nodeKind,
-        SH.pattern,
-        SH.hasValue,
-        SH["in"],
+        # Value range.
         SH.minInclusive,
         SH.maxInclusive,
+        SH.minExclusive,
+        SH.maxExclusive,
+        # String-based.
+        SH.minLength,
+        SH.maxLength,
+        SH.pattern,
+        SH.languageIn,
+        SH.uniqueLang,
+        # Property pairs.
+        SH.equals,
+        SH.disjoint,
+        SH.lessThan,
+        SH.lessThanOrEquals,
+        # Logical.
+        SH["not"],
+        SH["and"],
+        SH["or"],
+        SH.xone,
+        # Shape-based.
+        SH.node,
+        SH.qualifiedValueShape,
+        # Other.
+        SH.closed,
+        SH.hasValue,
+        SH["in"],
+        # SPARQL-based.
         SH.select,
+        SH.ask,
+    }
+)
+
+#: The sh: terms a shape node carries that constrain nothing: how shapes are wired
+#: together, what they aim at, what they say to a reader, and the modifiers that only
+#: qualify the parameter beside them. Everything else in the sh: namespace reads as a
+#: constraint, so this is the list that has to be extended - deliberately, and with
+#: the knowledge that the guarantee gives up one term - when the shapes file starts
+#: using a SHACL term that enforces nothing. A constraint stated outside the sh:
+#: namespace, as a custom constraint component, is beyond what this audits and beyond
+#: what this shapes file writes.
+SHAPE_PREDICATES = frozenset(
+    {
+        # Structure. Each block these reach is enumerated as a constraint of its own.
+        SH.property,
+        SH.sparql,
+        SH.path,
+        # Targets: which nodes the shape judges, not what it demands of them.
+        SH.targetClass,
+        SH.targetNode,
+        SH.targetObjectsOf,
+        SH.targetSubjectsOf,
+        # What the shape says to whoever tripped it, and how loudly.
+        SH.message,
+        SH.severity,
+        SH.name,
+        SH.description,
+        SH.order,
+        SH.group,
+        SH.deactivated,
+        # Modifiers: meaningless alone, each qualifies a parameter beside it.
+        SH.flags,
+        SH.ignoredProperties,
+        SH.qualifiedMinCount,
+        SH.qualifiedMaxCount,
+        SH.qualifiedValueShapesDisjoint,
+        # SPARQL plumbing: how a query is written down, not what it asks.
+        SH.prefixes,
+        SH.declare,
+        SH.prefix,
+        SH.namespace,
     }
 )
 
@@ -51,19 +125,29 @@ def _local(term) -> str:
     return re.split(r"[#/]", str(term))[-1]
 
 
+def _parameters(node) -> frozenset:
+    """Every predicate on ``node`` that states a constraint.
+
+    Read by complement: a SHACL term this file does not recognize counts as a
+    constraint rather than as nothing. Recognizing parameters instead is what let the
+    gap in - a parameter nobody had listed was enforced against every graph, with no
+    message, no fixture, and a green suite, because the audit could not see the node
+    carrying it.
+    """
+    return frozenset(
+        p
+        for p in SHAPES.predicates(node)
+        if str(p).startswith(str(SH)) and p not in SHAPE_PREDICATES
+    )
+
+
 def _name(node) -> str:
     """A readable id for a constraint: which shape, which path, which parameter."""
-    parent = next(SHAPES.subjects(SH.property, node), None) or next(
-        SHAPES.subjects(SH.sparql, node), None
-    )
+    parent = next(iter(sorted(SHAPES.subjects(object=node), key=str)), None)
     path = SHAPES.value(node, SH.path)
-    parameters = sorted(_local(p) for p in SHAPES.predicates(node) if p in CONSTRAINT_PARAMETERS)
+    parameters = sorted(_local(p) for p in _parameters(node))
     parts = [parent if parent is not None else node, path, *parameters]
     return "-".join(_local(part) for part in parts if isinstance(part, URIRef | str))
-
-
-def _parameters(node) -> frozenset:
-    return frozenset(p for p in SHAPES.predicates(node) if p in CONSTRAINT_PARAMETERS)
 
 
 CONSTRAINTS = sorted(
@@ -75,10 +159,11 @@ CONSTRAINTS = sorted(
 CONSTRAINT_IDS = [name for name, _, _ in CONSTRAINTS]
 
 
-#: Every block that can hold a constraint: a property shape, a SPARQL constraint, or a
-#: node shape stating one directly. The first two are found by structure rather than by
-#: sh:message, because a block written without a message is precisely what CONSTRAINTS
-#: cannot see and what the test below exists to catch.
+#: Every block that can hold a constraint: a property shape, a SPARQL constraint, or
+#: any node stating a parameter directly. The first two are found by structure and the
+#: third by the complement rule above, because neither reads sh:message - a block
+#: written without one is precisely what CONSTRAINTS cannot see and what the tests
+#: below exist to catch.
 CONSTRAINT_BLOCKS = sorted(
     (
         (
@@ -110,6 +195,49 @@ def test_the_shapes_file_has_constraints_to_cover():
     assert CONSTRAINTS, "no messages found in the shapes graph; this test proves nothing"
 
 
+def test_the_shapes_file_has_constraint_blocks_to_cover():
+    """An empty parametrization is a silent skip, not a failure.
+
+    The enumeration below is found by structure rather than by sh:message, so a change
+    that stops it finding anything would take the whole added-without-a-message check
+    away without a single red test.
+    """
+    assert CONSTRAINT_BLOCKS, "no constraint blocks found in the shapes graph; this proves nothing"
+
+
+def test_no_constraint_parameter_is_classified_as_structure():
+    """The one way the complement rule in ``_parameters`` can be made to lie.
+
+    Everything outside SHAPE_PREDICATES is read as a constraint, so the audit stays
+    complete however SHACL is written - unless a term that really does constrain is
+    listed as structure, at which point that constraint goes quiet again. Naming the
+    SHACL Core families is what turns that mistake into a red build.
+    """
+    misclassified = sorted(_local(p) for p in CONSTRAINT_PARAMETERS & SHAPE_PREDICATES)
+    assert not misclassified, (
+        f"{misclassified} state constraints and are listed in SHAPE_PREDICATES, so a shape "
+        f"carrying one is enforced against every graph while this file reads it as "
+        f"structure. Remove them from SHAPE_PREDICATES."
+    )
+
+
+def test_the_two_enumerations_cover_the_same_constraints():
+    """The structural enumeration and the message-driven one are the same set.
+
+    Nothing else says so: the fixture checks read sh:message and the block check reads
+    structure, so the two can drift apart - a block enumerated by neither, or a message
+    defending nothing - and each test go on passing over its own half.
+    """
+    unmessaged = sorted(set(CONSTRAINT_BLOCK_IDS) - set(CONSTRAINT_IDS))
+    unstated = sorted(set(CONSTRAINT_IDS) - set(CONSTRAINT_BLOCK_IDS))
+    assert not unmessaged and not unstated, (
+        f"the two enumerations disagree. Enumerated as constraints but carrying no "
+        f"message, so defended by no fixture: {unmessaged}. Carrying a message but "
+        f"stating no constraint this file can see, so the message defends nothing: "
+        f"{unstated}."
+    )
+
+
 @pytest.mark.parametrize(("name", "message", "parameters"), CONSTRAINTS, ids=CONSTRAINT_IDS)
 def test_each_message_belongs_to_exactly_one_constraint(name, message, parameters):
     """One constraint, one message - otherwise one fixture appears to defend two.
@@ -120,8 +248,8 @@ def test_each_message_belongs_to_exactly_one_constraint(name, message, parameter
     """
     assert len(parameters) == 1, (
         f"{name}: expected exactly one constraint parameter under this message, found "
-        f"{sorted(_local(p) for p in parameters)}. Split the block, or add the parameter "
-        f"to CONSTRAINT_PARAMETERS if it is one this test does not know."
+        f"{sorted(_local(p) for p in parameters)}. Split the block, or - if one of those "
+        f"terms constrains nothing - add it to SHAPE_PREDICATES."
     )
 
 
@@ -148,8 +276,8 @@ def test_each_constraint_carries_exactly_one_message(name, parameters, messages)
     """
     assert len(parameters) == 1, (
         f"{name}: expected exactly one constraint parameter in this block, found "
-        f"{sorted(_local(p) for p in parameters)}. Split the block, or add the parameter "
-        f"to CONSTRAINT_PARAMETERS if it is one this test does not know."
+        f"{sorted(_local(p) for p in parameters)}. Split the block, or - if one of those "
+        f"terms constrains nothing - add it to SHAPE_PREDICATES."
     )
     assert len(messages) == 1, (
         f"{name} carries no single sh:message ({len(messages)} found), so it is invisible "

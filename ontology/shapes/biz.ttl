@@ -4,9 +4,11 @@
 # message is the only part of a shape anybody reads. One constraint, one message, one
 # negative fixture under ontology/instances/fixtures/invalid/ asserting that exact
 # message. tests/test_shape_coverage.py checks that pairing holds for every constraint
-# in this file, so a constraint cannot be removed, loosened or added without a fixture
-# that says what it was for. The claim in this comment is therefore kept by the suite
-# rather than by whoever last edited the file.
+# in this file - inside a sh:property block, inside a sh:sparql block, or stated
+# straight onto a node shape the way sh:nodeKind is below - so a constraint cannot be
+# removed, loosened or added without a fixture that says what it was for. The claim in
+# this comment is therefore kept by the suite rather than by whoever last edited the
+# file.
 #
 # Validation is a batch pass over a finished graph, never a write-time check. The
 # authorization rule below is the reason: a graph is assembled edge by edge, and the
