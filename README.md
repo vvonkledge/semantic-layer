@@ -50,9 +50,12 @@ tests/
    exact message is committed beside the fixture, so a shape cannot silently stop
    enforcing while something else keeps failing in its place.
 3. Every constraint in `ontology/shapes/biz.ttl` has such a fixture - wherever in a
-   shape it is written, and whichever SHACL parameter states it. That pairing is itself
-   checked rather than believed, so no constraint can be removed, loosened or added
-   without a fixture that says what it was for.
+   shape it is written, nested inside another shape included, and whichever SHACL
+   parameter states it, one the test file has never heard of included. The parameters
+   it has heard of are held against the list pyshacl enforces, so the classification
+   cannot fall behind the validator. That pairing is itself checked rather than
+   believed, so no constraint can be removed, loosened or added without a fixture that
+   says what it was for.
 4. Every competency question returns its committed answer, so a vocabulary change that
    stops the model answering a business question fails the build.
 5. Every committed entity carries exactly the identifier minting would give it, so a
