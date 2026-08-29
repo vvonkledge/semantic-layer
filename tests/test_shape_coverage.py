@@ -20,8 +20,9 @@ from rdflib import SH, URIRef
 from semantic_layer import graph
 
 #: The SHACL constraint parameters this shapes file uses. A parameter missing from
-#: this set reads as no constraint at all, which fails the count below rather than
-#: passing quietly - so the fix when it fires is to add the parameter here.
+#: this set reads as no constraint at all; every block that could hold one is counted
+#: below, so an unknown parameter fails that count rather than passing quietly - and
+#: the fix when it fires is to add the parameter here.
 CONSTRAINT_PARAMETERS = frozenset(
     {
         SH.minCount,
@@ -74,6 +75,27 @@ CONSTRAINTS = sorted(
 CONSTRAINT_IDS = [name for name, _, _ in CONSTRAINTS]
 
 
+#: Every block that can hold a constraint: a property shape, a SPARQL constraint, or a
+#: node shape stating one directly. The first two are found by structure rather than by
+#: sh:message, because a block written without a message is precisely what CONSTRAINTS
+#: cannot see and what the test below exists to catch.
+CONSTRAINT_BLOCKS = sorted(
+    (
+        (
+            _name(node),
+            _parameters(node),
+            frozenset(str(m) for m in SHAPES.objects(node, SH.message)),
+        )
+        for node in set(SHAPES.objects(None, SH.property))
+        | set(SHAPES.objects(None, SH.sparql))
+        | {subject for subject in SHAPES.subjects() if _parameters(subject)}
+    ),
+    key=lambda block: (block[0], sorted(block[2])),
+)
+
+CONSTRAINT_BLOCK_IDS = [name for name, _, _ in CONSTRAINT_BLOCKS]
+
+
 def _reads_like(message: str) -> re.Pattern:
     """A pattern matching what ``message`` reads like once its slots are filled in.
 
@@ -110,4 +132,28 @@ def test_each_constraint_is_asserted_by_a_negative_fixture(name, message, parame
         f"{name} can be removed or loosened with a green suite: no fixture under "
         f"{graph.INVALID_FIXTURES_DIR.name}/ commits its message. Add one that trips this "
         f"constraint and nothing else."
+    )
+
+
+@pytest.mark.parametrize(
+    ("name", "parameters", "messages"), CONSTRAINT_BLOCKS, ids=CONSTRAINT_BLOCK_IDS
+)
+def test_each_constraint_carries_exactly_one_message(name, parameters, messages):
+    """The inverse of the two tests above, without which "added" is only an intention.
+
+    Both of them are parametrized from sh:message, so a constraint written without one
+    is invisible to them: it is enforced by the shapes file, defended by nothing, and
+    can be removed or loosened again with a green suite. Enumerating the blocks instead
+    is what makes a constraint added without a message fail here.
+    """
+    assert len(parameters) == 1, (
+        f"{name}: expected exactly one constraint parameter in this block, found "
+        f"{sorted(_local(p) for p in parameters)}. Split the block, or add the parameter "
+        f"to CONSTRAINT_PARAMETERS if it is one this test does not know."
+    )
+    assert len(messages) == 1, (
+        f"{name} carries no single sh:message ({len(messages)} found), so it is invisible "
+        f"to the fixture check above and can be removed or loosened with a green suite. "
+        f"Give it one message, and a fixture under {graph.INVALID_FIXTURES_DIR.name}/ that "
+        f"commits it."
     )
