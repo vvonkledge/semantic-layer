@@ -1,0 +1,270 @@
+# SHACL shapes for the L1 business layer.
+#
+# Every constraint carries a message written for the person who tripped it, because the
+# message is the only part of a shape anybody reads. One constraint, one message, one
+# negative fixture under ontology/instances/fixtures/invalid/ asserting that exact
+# message. tests/test_shape_coverage.py checks that pairing holds for every constraint
+# in this file - inside a sh:property block, inside a sh:sparql block, stated straight
+# onto a node shape the way sh:nodeKind is below, or nested inside another shape under
+# sh:node or in an sh:or list - so a constraint cannot be removed, loosened or added
+# without a fixture that says what it was for. The claim in this comment is therefore
+# kept by the suite rather than by whoever last edited the file.
+#
+# Two groups of SHACL terms may not be written here at all in phase 0, and the suite
+# refuses them by name. The qualified family - sh:qualifiedValueShape,
+# sh:qualifiedMinCount, sh:qualifiedMaxCount and sh:qualifiedValueShapesDisjoint - states
+# how many values and which values count, and only the count can be held by a fixture, so
+# a wider value shape loosens the rule while every fixture still fails for its committed
+# reason. The modifiers sh:flags and sh:ignoredProperties do the same to the parameter
+# they sit beside: a fixture committed against a sh:pattern is a value that fails under
+# either casing, and one committed against a sh:closed is a node carrying a property
+# nobody would ignore, so each goes on failing for its committed reason after the rule it
+# defends has widened. The parameters themselves are supported: write sh:pattern and
+# sh:closed here as freely as any other constraint, each with its message and its fixture.
+# Where a refused term is what a business rule needs, write the rule without it - sh:node
+# beside a count, a pattern spelling out every form it accepts, a closed shape declaring
+# the property it means to allow - or move the boundary deliberately.
+#
+# Validation is a batch pass over a finished graph, never a write-time check. The
+# authorization rule below is the reason: a graph is assembled edge by edge, and the
+# same valid graph is invalid halfway through, depending only on arrival order.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core: <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix shp:  <https://semantic-layer.19h09.co/shapes/biz#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://semantic-layer.19h09.co/shapes/biz>
+    a owl:Ontology ;
+    rdfs:label "Semantic layer business shapes (L1)" ;
+    owl:versionInfo "0.2.0" ;
+    sh:declare [ sh:prefix "biz"  ; sh:namespace "https://semantic-layer.19h09.co/vocab/biz#"^^xsd:anyURI ] ,
+               [ sh:prefix "core" ; sh:namespace "https://semantic-layer.19h09.co/vocab/core#"^^xsd:anyURI ] ,
+               [ sh:prefix "rdf"  ; sh:namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"^^xsd:anyURI ] ,
+               [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,
+               [ sh:prefix "owl"  ; sh:namespace "http://www.w3.org/2002/07/owl#"^^xsd:anyURI ] .
+
+## Identity: a business entity is a minted identifier, never an anonymous node.
+
+shp:IdentityShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Goal , biz:Capability , biz:Actor , biz:Role , biz:Policy , biz:Assignment ;
+    sh:nodeKind sh:IRI ;
+    sh:message "A business entity was committed as a blank node, with no identifier. Every L1 entity carries a minted IRI: a blank node cannot be superseded, cited from another layer, or named in an audit record. See docs/identifiers.md." .
+
+## Capability: ownership and goal linkage.
+
+shp:CapabilityShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Capability ;
+
+    sh:property [
+        sh:path biz:ownedBy ;
+        sh:minCount 1 ;
+        sh:message "Capability {$this} has no owner. Unowned work is unassignable: nobody can authorize it and nobody answers for it." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:ownedBy ;
+        sh:maxCount 1 ;
+        sh:message "Capability {$this} has more than one owner. Accountability is singular; split the capability instead of splitting its ownership." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:ownedBy ;
+        sh:class biz:Actor ;
+        sh:message "Capability {$this} is owned by {?value}, which is not an Actor. Ownership lands on a person, a team or an agent identity." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:supports ;
+        sh:class biz:Goal ;
+        sh:message "Capability {$this} supports {?value}, which is not a Goal. A capability contributes to outcomes, not to other capabilities." ;
+    ] .
+
+## Authorization: roles are granted to actors, roles permit capabilities.
+
+shp:ActorShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Actor ;
+
+    sh:property [
+        sh:path biz:grantsRole ;
+        sh:class biz:Role ;
+        sh:message "Actor {$this} is granted {?value}, which is not a Role. Authorization flows actor to role to capability, and nowhere else." ;
+    ] .
+
+shp:RoleShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Role ;
+
+    sh:property [
+        sh:path biz:permits ;
+        sh:class biz:Capability ;
+        sh:message "Role {$this} permits {?value}, which is not a Capability. A role permits what may be done, not who may do it." ;
+    ] .
+
+## Assignment: complete, well-aimed, and authorized.
+#
+# Each of the four edges is checked three times - present, single, and well-aimed -
+# and each check carries its own message. Sharing one message across "none" and
+# "more than one" would read as one rule and regress as two.
+
+shp:AssignmentShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Assignment ;
+
+    sh:property [
+        sh:path biz:assignedTo ;
+        sh:minCount 1 ;
+        sh:message "Assignment {$this} names no agent identity with biz:assignedTo. Work nobody is named for cannot be attributed afterwards." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:assignedTo ;
+        sh:maxCount 1 ;
+        sh:message "Assignment {$this} names more than one agent identity with biz:assignedTo. One assignment, one assignee; two agents on one piece of work is two assignments, or nobody is answerable for the run." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:assignedTo ;
+        sh:class biz:AgentIdentity ;
+        sh:message "Assignment {$this} is assigned to {?value}, which is not an AgentIdentity. Assignments are given to agents; people and teams own capabilities instead." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:targetsCapability ;
+        sh:minCount 1 ;
+        sh:message "Assignment {$this} names no capability with biz:targetsCapability. Without one there is nothing to authorize the assignee against." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:targetsCapability ;
+        sh:maxCount 1 ;
+        sh:message "Assignment {$this} names more than one capability with biz:targetsCapability. Permission is granted per capability, so an assignment spanning two of them hides which permission it actually needed." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:targetsCapability ;
+        sh:class biz:Capability ;
+        sh:message "Assignment {$this} targets {?value}, which is not a Capability." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:servesGoal ;
+        sh:minCount 1 ;
+        sh:message "Assignment {$this} names no goal with biz:servesGoal. Work with no stated outcome cannot be prioritized, judged or stopped for a reason." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:servesGoal ;
+        sh:maxCount 1 ;
+        sh:message "Assignment {$this} names more than one goal with biz:servesGoal. Work serving two outcomes cannot be stopped for one of them; split it." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:servesGoal ;
+        sh:class biz:Goal ;
+        sh:message "Assignment {$this} serves {?value}, which is not a Goal." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:governedBy ;
+        sh:minCount 1 ;
+        sh:message "Assignment {$this} names no governing policy with biz:governedBy. An agent may not act under an unstated policy." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:governedBy ;
+        sh:maxCount 1 ;
+        sh:message "Assignment {$this} names more than one governing policy with biz:governedBy. Two policies leave the agent to decide which one it is acting under, which is the decision a policy exists to take away." ;
+    ] ;
+
+    sh:property [
+        sh:path biz:governedBy ;
+        sh:class biz:Policy ;
+        sh:message "Assignment {$this} is governed by {?value}, which is not a Policy." ;
+    ] ;
+
+    # The target is required to be a Capability here so that an assignment aimed at
+    # the wrong kind of thing reports that, once, rather than also reporting that no
+    # role permits it - which is true of anything that is not a capability, and tells
+    # the reader nothing they can act on.
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Assignment {$this} assigns {?agent} to capability {?capability}, but {?agent} holds no role permitting it. Authorization is not implied by being asked." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/biz> ;
+        sh:select """
+            SELECT $this ?agent ?capability
+            WHERE {
+                $this biz:assignedTo ?agent ;
+                      biz:targetsCapability ?capability .
+                ?capability a biz:Capability .
+                FILTER NOT EXISTS { ?agent biz:grantsRole/biz:permits ?capability }
+            }
+        """ ;
+    ] .
+
+## The L1 boundary: business truth never names a system.
+#
+# A business node may carry only properties defined by the core or business
+# vocabulary, plus the standard annotations below. Anything else - a hostname, a
+# repository, an environment - is an L2 fact, and an L2 fact in L1 gives business
+# truth an expiry date it has no way to honour. Adding a term to the vocabulary is
+# how the allowance grows; there is no separate list to keep in step.
+#
+# The GRAPH clause is what makes that true rather than merely intended. SHACL judges
+# one graph and cannot see where a triple came from, so if the vocabulary were merged
+# flat into the data under validation, an instance file asserting
+# `tech:productionEndpoint rdfs:isDefinedBy <.../vocab/biz>` would be granting itself
+# the allowance and this constraint would agree. Asking inside the vocabulary's own
+# named graph means only the vocabulary can answer, and an instance file cannot reach
+# that graph: Turtle has no syntax for naming one. See graph.data_graph.
+
+shp:L1BoundaryShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Goal , biz:Capability , biz:Actor , biz:Role , biz:Policy , biz:Assignment ;
+
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "L1 node {$this} asserts {?property}, which no L1 vocabulary defines. Technical facts - services, repositories, environments, endpoints - belong to L2 and never enter L1." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/biz> ;
+        sh:select """
+            SELECT $this ?property
+            WHERE {
+                $this ?property ?object .
+                FILTER NOT EXISTS {
+                    GRAPH ?vocabulary { ?property rdfs:isDefinedBy ?vocabulary }
+                    FILTER ( ?vocabulary IN (
+                        <https://semantic-layer.19h09.co/vocab/core> ,
+                        <https://semantic-layer.19h09.co/vocab/biz>
+                    ) )
+                }
+                FILTER ( ?property NOT IN (
+                    rdf:type , rdfs:label , rdfs:comment , rdfs:seeAlso , owl:deprecated
+                ) )
+            }
+        """ ;
+    ] .
+
+## Retirement: an identifier is deprecated, never reused and never deleted.
+
+shp:SupersessionShape
+    a sh:NodeShape ;
+    sh:targetSubjectsOf core:supersedes ;
+
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "{$this} supersedes {?superseded}, which is not marked owl:deprecated true. A retired identifier stays in the graph, deprecated, so references held elsewhere keep resolving." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/biz> ;
+        sh:select """
+            SELECT $this ?superseded
+            WHERE {
+                $this core:supersedes ?superseded .
+                FILTER NOT EXISTS { ?superseded owl:deprecated true }
+            }
+        """ ;
+    ] .

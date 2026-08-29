@@ -1,0 +1,57 @@
+# Cross-cutting core vocabulary for the semantic layer.
+#
+# These terms are layer-independent: they describe the lifecycle and provenance of
+# any curated statement, whatever layer it belongs to. Business terms live in
+# ontology/biz.ttl.
+#
+# Enforcement is SHACL, not a reasoner. rdfs:domain and rdfs:range below are
+# documentation for external consumers; no inference is ever run over this
+# vocabulary (see docs/evolution.md).
+
+@prefix core: <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://semantic-layer.19h09.co/vocab/core>
+    a owl:Ontology ;
+    rdfs:label "Semantic layer core vocabulary" ;
+    rdfs:comment "Lifecycle and provenance terms shared by every layer of the semantic layer." ;
+    owl:versionInfo "0.1.0" .
+
+core:supersedes
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/core> ;
+    rdfs:label "supersedes" ;
+    rdfs:comment """Names the retired entity this one replaces. Identifiers are never reused and
+never renamed: a rename mints a new IRI, points it at the old one with core:supersedes, and marks
+the old one owl:deprecated true. References held elsewhere keep resolving.""" .
+
+core:validFrom
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/core> ;
+    rdfs:label "valid from" ;
+    rdfs:comment "The date from which this statement is true of the business. Not the date it was written down; the commit records that." ;
+    rdfs:range xsd:date .
+
+core:validTo
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/core> ;
+    rdfs:label "valid to" ;
+    rdfs:comment "The date after which this statement stopped being true of the business." ;
+    rdfs:range xsd:date .
+
+core:version
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/core> ;
+    rdfs:label "version" ;
+    rdfs:comment "A business-meaningful revision label, where one exists. The git commit is always the technical version." ;
+    rdfs:range xsd:string .
+
+core:sourceOfTruth
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/core> ;
+    rdfs:label "source of truth" ;
+    rdfs:comment """Names the system that masters this fact when git does not. Import from such a
+system is one-way: the layer reflects it and never writes back.""" ;
+    rdfs:range xsd:string .

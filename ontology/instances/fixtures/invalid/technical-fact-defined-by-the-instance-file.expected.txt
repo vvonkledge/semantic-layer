@@ -1,0 +1,1 @@
+L1 node https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing asserts https://example.org/some-technical-vocabulary#productionEndpoint, which no L1 vocabulary defines. Technical facts - services, repositories, environments, endpoints - belong to L2 and never enter L1.

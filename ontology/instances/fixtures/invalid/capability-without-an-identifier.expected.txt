@@ -1,0 +1,1 @@
+A business entity was committed as a blank node, with no identifier. Every L1 entity carries a minted IRI: a blank node cannot be superseded, cited from another layer, or named in an audit record. See docs/identifiers.md.

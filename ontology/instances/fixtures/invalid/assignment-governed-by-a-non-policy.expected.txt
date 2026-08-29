@@ -1,0 +1,1 @@
+Assignment https://semantic-layer.19h09.co/fixture/biz/assignment/governed-by-a-role is governed by https://semantic-layer.19h09.co/fixture/biz/role/service-maintainer, which is not a Policy.

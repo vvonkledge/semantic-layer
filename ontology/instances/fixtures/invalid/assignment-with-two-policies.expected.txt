@@ -1,0 +1,1 @@
+Assignment https://semantic-layer.19h09.co/fixture/biz/assignment/double-policed names more than one governing policy with biz:governedBy. Two policies leave the agent to decide which one it is acting under, which is the decision a policy exists to take away.

@@ -1,0 +1,14 @@
+[
+  {
+    "goal": "https://semantic-layer.19h09.co/fixture/biz/goal/checkout-reliability",
+    "goalLabel": "Checkout reliability",
+    "capability": "https://semantic-layer.19h09.co/fixture/biz/capability/fraud-screening",
+    "capabilityLabel": "Fraud screening"
+  },
+  {
+    "goal": "https://semantic-layer.19h09.co/fixture/biz/goal/checkout-reliability",
+    "goalLabel": "Checkout reliability",
+    "capability": "https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing",
+    "capabilityLabel": "Payment processing"
+  }
+]

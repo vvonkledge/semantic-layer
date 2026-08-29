@@ -1,0 +1,1 @@
+Capability https://semantic-layer.19h09.co/fixture/biz/capability/unowned-reporting has no owner. Unowned work is unassignable: nobody can authorize it and nobody answers for it.

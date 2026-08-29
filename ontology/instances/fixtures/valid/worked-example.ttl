@@ -1,0 +1,105 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+#
+# Every entity below is invented to exercise the vocabulary and the shapes. Fixtures
+# are minted under the .../fixture/biz/ namespace, which no curated entity ever uses,
+# so a fixture can never be mistaken for a statement about the organization. Curated
+# L1 content lives in ontology/instances/business/ and is minted under .../biz/.
+#
+# The example is the one worked through in the architecture report: a goal, the
+# capabilities that serve it, who owns them, who may perform them, and one agent
+# assignment under a policy.
+
+@prefix biz:      <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core:     <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix goal:     <https://semantic-layer.19h09.co/fixture/biz/goal/> .
+@prefix cap:      <https://semantic-layer.19h09.co/fixture/biz/capability/> .
+@prefix team:     <https://semantic-layer.19h09.co/fixture/biz/team/> .
+@prefix person:   <https://semantic-layer.19h09.co/fixture/biz/person/> .
+@prefix agent:    <https://semantic-layer.19h09.co/fixture/biz/agent/> .
+@prefix role:     <https://semantic-layer.19h09.co/fixture/biz/role/> .
+@prefix policy:   <https://semantic-layer.19h09.co/fixture/biz/policy/> .
+@prefix asg:      <https://semantic-layer.19h09.co/fixture/biz/assignment/> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+
+## Goal
+
+goal:checkout-reliability
+    a biz:Goal ;
+    rdfs:label "Checkout reliability" ;
+    rdfs:comment "Customers can complete a purchase without the payment step failing them." ;
+    core:validFrom "2026-01-01"^^xsd:date .
+
+## Capabilities
+
+cap:payment-processing
+    a biz:Capability ;
+    rdfs:label "Payment processing" ;
+    rdfs:comment "Taking a customer payment and confirming or declining it." ;
+    biz:supports goal:checkout-reliability ;
+    biz:ownedBy team:payments ;
+    core:supersedes cap:card-payments .
+
+cap:fraud-screening
+    a biz:Capability ;
+    rdfs:label "Fraud screening" ;
+    rdfs:comment "Judging whether a payment attempt is fraudulent before it is accepted." ;
+    biz:supports goal:checkout-reliability ;
+    biz:ownedBy team:risk .
+
+# Retired: the capability was renamed when it stopped being card-only. The identifier
+# is kept, deprecated, and is never reused; the replacement points back at it.
+cap:card-payments
+    a biz:Capability ;
+    rdfs:label "Card payments" ;
+    rdfs:comment "Superseded by payment-processing once non-card methods were added." ;
+    biz:ownedBy team:payments ;
+    owl:deprecated true .
+
+## Actors
+
+team:payments
+    a biz:Team ;
+    rdfs:label "Payments team" .
+
+team:risk
+    a biz:Team ;
+    rdfs:label "Risk team" .
+
+person:payments-lead
+    a biz:Person ;
+    rdfs:label "Payments lead" ;
+    biz:grantsRole role:service-maintainer ;
+    core:sourceOfTruth "HR system of record; imported one way, never written back." .
+
+agent:remediator
+    a biz:AgentIdentity ;
+    rdfs:label "Remediation agent" ;
+    rdfs:comment "An automated actor the organization assigns investigation work to." ;
+    biz:grantsRole role:service-maintainer .
+
+## Authorization
+
+role:service-maintainer
+    a biz:Role ;
+    rdfs:label "Service maintainer" ;
+    rdfs:comment "May investigate, and propose changes to, the capabilities it permits." ;
+    biz:permits cap:payment-processing .
+
+## Policy
+
+policy:production-change-review
+    a biz:Policy ;
+    rdfs:label "Production change review" ;
+    rdfs:comment "A change affecting customer payments is proposed for human review and never applied by the agent itself." .
+
+## Assignment
+
+asg:investigate-payment-declines
+    a biz:Assignment ;
+    rdfs:label "Investigate elevated payment declines" ;
+    biz:assignedTo agent:remediator ;
+    biz:targetsCapability cap:payment-processing ;
+    biz:servesGoal goal:checkout-reliability ;
+    biz:governedBy policy:production-change-review .

@@ -1,0 +1,9 @@
+[
+  {
+    "assignment": "https://semantic-layer.19h09.co/fixture/biz/assignment/investigate-payment-declines",
+    "agent": "https://semantic-layer.19h09.co/fixture/biz/agent/remediator",
+    "capability": "https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing",
+    "goal": "https://semantic-layer.19h09.co/fixture/biz/goal/checkout-reliability",
+    "policy": "https://semantic-layer.19h09.co/fixture/biz/policy/production-change-review"
+  }
+]

@@ -1,0 +1,151 @@
+# L1 business vocabulary: what the organization does, who is accountable for it,
+# what an agent may be asked to do, and under which policy.
+#
+# L1 never names a service, repository, database, environment or endpoint. Those are
+# L2 facts, they decay, and business truth must not acquire an expiry date it cannot
+# honour. The L1 boundary shape in ontology/shapes/biz.ttl enforces this.
+#
+# Enforcement is SHACL, not a reasoner. rdfs:domain and rdfs:range below are
+# documentation for external consumers; no inference is ever run over this
+# vocabulary (see docs/evolution.md).
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<https://semantic-layer.19h09.co/vocab/biz>
+    a owl:Ontology ;
+    rdfs:label "Semantic layer business vocabulary (L1)" ;
+    rdfs:comment "The business layer: goals, capabilities, actors, roles, policies and assignments." ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://semantic-layer.19h09.co/vocab/core> .
+
+## Classes
+
+biz:Goal
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "Goal" ;
+    rdfs:comment "An outcome the organization is trying to achieve. Stated in business terms, with no reference to how it is delivered." .
+
+biz:Capability
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "Capability" ;
+    rdfs:comment """Something the organization is able to do. A capability outlives every system that
+delivers it, which is why it is the durable anchor an agent's work is attached to.""" .
+
+biz:Actor
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "Actor" ;
+    rdfs:comment "Anyone or anything the organization holds accountable: a person, a team, or an agent identity." .
+
+biz:Person
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:subClassOf biz:Actor ;
+    rdfs:label "Person" ;
+    rdfs:comment "A named human. Usually mastered by an upstream HR system; where it is, say so with core:sourceOfTruth." .
+
+biz:Team
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:subClassOf biz:Actor ;
+    rdfs:label "Team" ;
+    rdfs:comment "A standing group of people the organization holds accountable as a unit." .
+
+biz:AgentIdentity
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:subClassOf biz:Actor ;
+    rdfs:label "Agent identity" ;
+    rdfs:comment """A non-human actor the organization assigns work to. Modelling it as an Actor is
+deliberate: ownership, authorization and accountability then work the same way for agents as for
+people, rather than becoming a second, weaker mechanism.""" .
+
+biz:Role
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "Role" ;
+    rdfs:comment "A named bundle of permission to perform capabilities. Roles are granted to actors; capabilities are permitted by roles." .
+
+biz:Policy
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "Policy" ;
+    rdfs:comment "A constraint the organization places on how work is carried out, such as requiring human review before a production change." .
+
+biz:Assignment
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "Assignment" ;
+    rdfs:comment """A specific piece of work given to an agent identity: which capability it exercises,
+which goal it serves, and which policy governs it. An assignment missing any of those cannot be
+authorized or audited.""" .
+
+## Relations
+
+biz:supports
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "supports" ;
+    rdfs:comment "Read: this capability contributes to that goal." ;
+    rdfs:domain biz:Capability ;
+    rdfs:range biz:Goal .
+
+biz:ownedBy
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "owned by" ;
+    rdfs:comment "Read: this capability is owned by that actor. Exactly one owner; unowned work is unassignable because nobody can authorize or answer for it." ;
+    rdfs:domain biz:Capability ;
+    rdfs:range biz:Actor .
+
+biz:grantsRole
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "grants role" ;
+    rdfs:comment "Read: the organization grants that role to this actor. The actor is the subject; the role it holds is the object." ;
+    rdfs:domain biz:Actor ;
+    rdfs:range biz:Role .
+
+biz:permits
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "permits" ;
+    rdfs:comment "Read: holding this role permits performing that capability." ;
+    rdfs:domain biz:Role ;
+    rdfs:range biz:Capability .
+
+biz:assignedTo
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "assigned to" ;
+    rdfs:comment "Read: this assignment is given to that agent identity. Exactly one, so every run is attributable." ;
+    rdfs:domain biz:Assignment ;
+    rdfs:range biz:AgentIdentity .
+
+biz:targetsCapability
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "targets capability" ;
+    rdfs:comment "Read: this assignment exercises that capability. The assignee must hold a role permitting it." ;
+    rdfs:domain biz:Assignment ;
+    rdfs:range biz:Capability .
+
+biz:servesGoal
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "serves goal" ;
+    rdfs:comment "Read: this assignment is being done in service of that goal. Work with no goal cannot be prioritized or stopped for a reason." ;
+    rdfs:domain biz:Assignment ;
+    rdfs:range biz:Goal .
+
+biz:governedBy
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/biz> ;
+    rdfs:label "governed by" ;
+    rdfs:comment "Read: this assignment is carried out under that policy." ;
+    rdfs:domain biz:Assignment ;
+    rdfs:range biz:Policy .
