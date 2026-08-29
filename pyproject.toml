@@ -1,0 +1,32 @@
+[project]
+name = "semantic-layer"
+version = "0.1.0"
+description = "L1 business ontology: what the organization does, who is accountable, and under which policy agents may act."
+requires-python = ">=3.11"
+dependencies = [
+    "rdflib>=7.1",
+    "pyshacl>=0.29",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/semantic_layer"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
