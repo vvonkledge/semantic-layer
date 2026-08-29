@@ -59,6 +59,15 @@ every committed instance file and checks that each entity's identifier is exactl
 minting would produce for its class and its directory, so a fixture cannot leak into
 curated content or be mistaken for a statement about the organization.
 
+## An entity with no identifier is not an entity
+
+Turtle lets a node be written anonymously, and everything below is about identifiers
+that are wrong rather than absent, so the absent case is stated separately:
+`shp:IdentityShape` rejects a business entity written as a blank node. Such a node
+validates as a capability or a goal in every other respect and can still never be
+superseded, cited from another layer, or named in an audit record, because there is
+nothing to cite. Mint the identifier first.
+
 ## Identifiers are never reused and never renamed
 
 An identifier is a promise. Audit records, past assignments and anything the layer ever

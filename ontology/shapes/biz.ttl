@@ -27,6 +27,14 @@
                [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,
                [ sh:prefix "owl"  ; sh:namespace "http://www.w3.org/2002/07/owl#"^^xsd:anyURI ] .
 
+## Identity: a business entity is a minted identifier, never an anonymous node.
+
+shp:IdentityShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Goal , biz:Capability , biz:Actor , biz:Role , biz:Policy , biz:Assignment ;
+    sh:nodeKind sh:IRI ;
+    sh:message "A business entity was committed as a blank node, with no identifier. Every L1 entity carries a minted IRI: a blank node cannot be superseded, cited from another layer, or named in an audit record. See docs/identifiers.md." .
+
 ## Capability: ownership and goal linkage.
 
 shp:CapabilityShape

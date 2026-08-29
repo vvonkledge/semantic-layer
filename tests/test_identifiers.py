@@ -62,6 +62,12 @@ def test_parse_rejects_anything_minting_would_not_have_produced(iri):
 
 
 def _typed_entities(paths):
+    """Every business entity in ``paths`` that has an identifier to check.
+
+    Whether an entity has one at all is `shp:IdentityShape`'s question, not this
+    file's, which is why a blank node is skipped here rather than failed: the invalid
+    fixtures deliberately contain one, and it is the shape that must reject it.
+    """
     data = graph.load(paths)
     for subject, _, rdf_class in data.triples((None, RDF.type, None)):
         if isinstance(subject, URIRef) and str(rdf_class).startswith(str(graph.BIZ)):
