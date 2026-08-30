@@ -10,9 +10,9 @@ refused.
 import json
 
 import pytest
-from rdflib import URIRef
+from rdflib import RDF, Graph, URIRef
 
-from semantic_layer import graph, pack
+from semantic_layer import github, graph, pack
 
 FRESH = "2026-08-30T12:00:00Z"
 
@@ -38,7 +38,7 @@ def amended(committed, **changes):
 
 def test_the_committed_pack_is_what_the_accepted_graph_packs(committed):
     """Deterministic, so a refresh that changes nothing shows no diff here either."""
-    built = pack.build(graph.turtle_files(graph.TECHNICAL_DIR), pack.accepted_observation())
+    built = pack.build(pack.accepted(), pack.accepted_observation())
     assert built.content == committed.content
     assert built.manifest == committed.manifest
 
@@ -109,7 +109,9 @@ def test_a_pack_carries_the_crossing_edge_and_not_what_is_on_the_other_side():
         "https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/"
         "3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
     )
-    built = pack.build(graph.turtle_files(graph.TECHNICAL_VALID_FIXTURES_DIR), observation)
+    built = pack.build(
+        pack.observed(graph.turtle_files(graph.TECHNICAL_VALID_FIXTURES_DIR)), observation
+    )
     content = graph.load_text(built.content.decode())
 
     capability = URIRef("https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing")
@@ -220,3 +222,34 @@ def test_packing_something_that_is_not_an_observation_is_refused():
                 "https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349"
             ),
         )
+
+
+def test_hostile_source_text_survives_the_whole_path():
+    """Captured response to reconciled graph to pack to a verified pack, once, together.
+
+    Each stage is covered on its own elsewhere, and this is the one that would have
+    caught what none of those did: the reconciler wrote Turtle correctly, the pack wrote
+    it as N-Triples with Turtle's quoting, and a repository description with a line
+    break in it produced a pack that looked fine and that no consumer could parse. A
+    composition bug is only visible from the composition.
+    """
+    snapshot, digest = github.read_snapshot(github.snapshot_path())
+    snapshot = json.loads(json.dumps(snapshot))
+    snapshot["repository"]["name"] = 'a "quoted" name\nwith a newline'
+    snapshot["repository"]["full_name"] = "vvonkledge/back\\slash"
+    snapshot["repository"]["owner"]["login"] = "control\x01characters"
+    snapshot["branches"]["items"][0]["name"] = "release/1.4 ☃"
+    snapshot["repository"]["default_branch"] = "release/1.4 ☃"
+
+    reconciled = github.reconcile(snapshot, digest=digest)
+    observed = graph.observed_data_graph(reconciled).graph(graph.OBSERVED_GRAPH)
+    assert graph.validate(graph.observed_data_graph(reconciled)).conforms
+
+    observation = next(iter(observed.subjects(RDF.type, graph.TECH.Observation)))
+    built = pack.build(observed, observation)
+
+    pack.verify(built.content, built.manifest, as_of=FRESH)
+    assert set(graph.load_text(built.content.decode())) == set(
+        Graph().parse(data=built.content, format="nt")
+    )
+    assert pack.build(observed, observation).content == built.content

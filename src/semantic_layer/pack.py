@@ -62,7 +62,7 @@ def _one(subgraph: Graph, subject: URIRef, predicate: URIRef, what: str):
     return values[0]
 
 
-def _observed(instances: Iterable[Path]) -> Graph:
+def observed(instances: Iterable[Path]) -> Graph:
     """The observed half of the layer, on its own.
 
     A pack carries technical truth. Curated business truth is not withheld from a
@@ -70,13 +70,16 @@ def _observed(instances: Iterable[Path]) -> Graph:
     and no freshness to state, and putting the two in one artifact would give the
     business half an expiry date it has no way to honour.
     """
-    dataset = layer.data_graph(instances)
-    return dataset.graph(layer.OBSERVED_GRAPH)
+    return layer.data_graph(instances).graph(layer.OBSERVED_GRAPH)
 
 
-def build(instances: Iterable[Path], observation: URIRef) -> Pack:
-    """The pack for one observation: what it saw, and nothing that it did not."""
-    observed = _observed(instances)
+def build(observed: Graph, observation: URIRef) -> Pack:
+    """The pack for one observation: what it saw, and nothing that it did not.
+
+    Takes the observed graph rather than the files it came from, so a candidate can be
+    packed before it is committed anywhere - which is also the only way the whole path
+    from a captured response to a verified pack can be exercised in one test.
+    """
     if (observation, RDF.type, TECH.Observation) not in observed:
         raise PackError(
             f"{observation} is not an observation in the observed graph, so there is nothing "
@@ -283,10 +286,14 @@ def read(directory: Path) -> Pack:
     )
 
 
+def accepted() -> Graph:
+    """The observed graph as it stands, accepted and committed."""
+    return observed(layer.turtle_files(layer.TECHNICAL_DIR))
+
+
 def accepted_observation() -> URIRef:
     """The one observation the accepted L2 graph holds."""
-    observed = _observed(layer.turtle_files(layer.TECHNICAL_DIR))
-    observations = sorted(observed.subjects(RDF.type, TECH.Observation), key=str)
+    observations = sorted(accepted().subjects(RDF.type, TECH.Observation), key=str)
     if len(observations) != 1:
         raise PackError(
             f"the accepted graph holds {len(observations)} observations, and this command "
@@ -298,7 +305,7 @@ def accepted_observation() -> URIRef:
 def main() -> None:
     directory = pack_dir()
     observation = accepted_observation()
-    write(build(layer.turtle_files(layer.TECHNICAL_DIR), observation), directory)
+    write(build(accepted(), observation), directory)
     print(f"packed {observation}")
     print(f"  {directory / CONTENT_NAME}")
     print(f"  {directory / MANIFEST_NAME}")

@@ -54,11 +54,45 @@ def _iri(node: URIRef, *, compact: bool) -> str:
     return f"<{node}>"
 
 
+#: The escapes N-Triples defines. Everything else below 0x20 is written as \uXXXX,
+#: because N-Triples has no other spelling for it.
+NT_ESCAPES = str.maketrans(
+    {
+        "\\": "\\\\",
+        '"': '\\"',
+        "\n": "\\n",
+        "\r": "\\r",
+        "\t": "\\t",
+        "\b": "\\b",
+        "\f": "\\f",
+    }
+)
+
+
+def _quoted(text: str, *, compact: bool) -> str:
+    """A lexical form, quoted for the syntax being written.
+
+    Turtle can hold a newline inside a triple-quoted string and rdflib writes one, which
+    is what makes a committed graph readable when a source puts a line break in a
+    description. N-Triples cannot: it is one triple per line, so the same value has to be
+    escaped instead. Handing rdflib's Turtle quoting to an N-Triples writer produces a
+    file that looks fine and that no consumer can parse - which is a thing to find out
+    here rather than in somebody else's pipeline.
+    """
+    if compact:
+        return Literal(text).n3()
+    escaped = text.translate(NT_ESCAPES)
+    escaped = "".join(
+        character if character >= " " or character == "\t" else f"\\u{ord(character):04X}"
+        for character in escaped
+    )
+    return f'"{escaped}"'
+
+
 def _literal(node: Literal, *, compact: bool) -> str:
-    # rdflib does the quoting and escaping; the datatype is compacted for Turtle so the
-    # common case - an xsd:dateTime - stays readable in a diff, and left in full for
-    # N-Triples, which has no prefixes to compact it with.
-    quoted = Literal(str(node)).n3()
+    # The datatype is compacted for Turtle so the common case - an xsd:dateTime - stays
+    # readable in a diff, and left in full for N-Triples, which has no prefixes.
+    quoted = _quoted(str(node), compact=compact)
     if node.language:
         return f"{quoted}@{node.language}"
     if node.datatype:
