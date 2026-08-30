@@ -1,0 +1,1 @@
+Repository https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349 carries no tech:repositoryPath. Where a repository is reachable today is the only part of it a person can act on; the identifier is a number that survives the rename.

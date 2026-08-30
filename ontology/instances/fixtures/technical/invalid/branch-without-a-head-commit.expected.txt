@@ -1,0 +1,1 @@
+Branch https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main carries no tech:headCommit. Where the branch pointed is the one thing the observation actually saw; without it this node records that a branch existed and nothing about it.

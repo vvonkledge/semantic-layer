@@ -1,0 +1,1 @@
+Artifact https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748 carries no tech:sourceLocalId. The name a thing has inside its source is what lets an identifier minted here be traced back to what it was minted from.

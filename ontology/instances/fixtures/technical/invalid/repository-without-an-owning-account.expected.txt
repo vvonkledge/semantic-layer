@@ -1,0 +1,1 @@
+Repository https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349 names no account with tech:ownedByAccount. The source says every repository sits under an account, so one that does not is a reading that lost something.

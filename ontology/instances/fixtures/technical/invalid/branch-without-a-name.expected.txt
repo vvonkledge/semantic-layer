@@ -1,0 +1,1 @@
+Branch https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main carries no tech:branchName. The name is half of the branch's identity, and it is carried as an attribute so a reader never has to decode an identifier to get it back.

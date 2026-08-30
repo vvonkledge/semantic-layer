@@ -1,0 +1,1 @@
+Branch https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main belongs to https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748, which is not a Repository. A branch hangs off the repository that contains it, not off the account or the observation.

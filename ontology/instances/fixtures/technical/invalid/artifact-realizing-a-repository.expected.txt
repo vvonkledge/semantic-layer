@@ -1,0 +1,1 @@
+Artifact https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748 realizes https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349, which is not a Capability. The one edge between the layers points at what the organization is able to do, and at nothing else.

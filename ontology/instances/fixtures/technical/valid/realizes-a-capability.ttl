@@ -1,0 +1,23 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+#
+# The one edge that crosses between the layers, and the whole of what this file is for.
+#
+# It points upward: the repository realizes the capability, never the reverse, because
+# a capability has to survive the deletion of every system that ever delivered it. It
+# is authored by a human here rather than imported, and no GitHub import writes one -
+# a source knows what it contains, not what the organization is accountable for.
+#
+# The two ends live in different files on purpose, and in different graphs. The
+# capability is curated L1 truth under ../../valid/worked-example.ttl; the edge is
+# observed L2 truth here. Nothing in L1 points down, and nothing here authors an L1
+# entity: a business node written into this directory is rejected by
+# shpt:CuratedFactInTheObservedGraphShape, and business-fact-in-the-observed-graph.ttl
+# is the fixture that proves it.
+
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+
+@prefix repo: <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/> .
+@prefix cap:  <https://semantic-layer.19h09.co/fixture/biz/capability/> .
+
+repo:1347717349
+    tech:realizes cap:payment-processing .

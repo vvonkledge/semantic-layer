@@ -1,0 +1,1 @@
+Observation https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed was observed from https://example.org/not-a-source, which is not a Source. An observation hangs off the system it read, not off something that system happened to contain.

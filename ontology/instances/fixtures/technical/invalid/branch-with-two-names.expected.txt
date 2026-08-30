@@ -1,0 +1,1 @@
+Branch https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main carries more than one tech:branchName. Only one of them can be the name in the identifier, and nothing here says which.

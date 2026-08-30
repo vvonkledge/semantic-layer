@@ -1,0 +1,1 @@
+Account https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748 carries more than one tech:accountLogin. An account has one handle at a time; the previous one belongs to the previous observation.

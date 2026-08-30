@@ -1,0 +1,21 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core: <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# A source committed under ontology/instances/fixtures/invalid/, which the loader
+# reads as curated. The mirror of business-fact-in-the-observed-graph.ttl: the
+# directory decides the layer, and a technical fact filed as declared business
+# truth is a fact with an expiry date in a layer that has no way to honour one.
+
+<https://semantic-layer.19h09.co/fixture/l2/github/api-github-com>
+    a tech:Source ;
+    rdfs:label "github at https://api.github.com" ;
+    tech:apiRoot "https://api.github.com"^^xsd:anyURI ;
+    tech:provider "github" ;
+    tech:trustBasis "Unauthenticated read of the public REST API, captured and hashed." .

@@ -1,0 +1,1 @@
+Repository https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349 names more than one branch with tech:defaultBranch. The default is where a reader who names no branch is sent, and there is one such place.

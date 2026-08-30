@@ -1,0 +1,30 @@
+# Competency question: which supported technical artifacts belong to this repository?
+#
+# What a consumer asks before deciding whether the observation covers what they need.
+# The answer is deliberately small: the account the source says the repository sits
+# under, and the branches the same reading saw. There is no third kind, and a kind this
+# source does not import is absent here rather than empty - which is why the supported
+# payload is written down in src/semantic_layer/github.py rather than inferred.
+#
+# The relationship is reported per row, so a reader can tell containment from
+# membership without knowing the vocabulary.
+
+PREFIX tech: <https://semantic-layer.19h09.co/vocab/tech#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?repository ?relation ?artifact ?kind ?label
+WHERE {
+    ?repository a tech:Repository .
+    {
+        ?repository tech:ownedByAccount ?artifact .
+        BIND ( "sits under" AS ?relation )
+    }
+    UNION
+    {
+        ?artifact tech:branchOf ?repository .
+        BIND ( "is a branch of" AS ?relation )
+    }
+    ?artifact a ?kind ;
+              rdfs:label ?label .
+}
+ORDER BY ?repository ?relation ?artifact

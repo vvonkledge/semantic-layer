@@ -1,6 +1,10 @@
 # Identifiers
 
-Every entity in the semantic layer has one identifier, and it looks like a URL:
+Every entity in the semantic layer has one identifier, and it looks like a URL. This
+page is about L1, where identifiers are authored by people. L2 identifiers are minted
+from a source's own immutable ids and are a different rule for a different reason; the
+end of this page says what carries over and what does not, and
+[l2-technical-layer.md](l2-technical-layer.md) has the whole of it.
 
 ```
 https://semantic-layer.19h09.co/biz/capability/payment-processing
@@ -104,3 +108,34 @@ anywhere.
 
 Queries that answer "what do we do now" filter out deprecated entities explicitly. See
 `queries/capabilities-serving-a-goal.rq`.
+
+## What L2 does instead
+
+An L1 slug is authored, because L1 is small, curated, and named in the language the
+business uses. None of that is true of a technical fact. An L2 entity is not authored,
+it is observed, and the thing being observed already has a name in a system that renames
+things without telling anyone and issues ids that mean nothing anywhere else.
+
+So an L2 identifier is **scoped by its source** and built from the source's **immutable
+id**, never from a name:
+
+```
+https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349
+\_________________________________/\_____/\_____________/\_________/\________/
+          permanent base           provider installation    kind     local id
+```
+
+Three things carry over from L1 and one does not.
+
+**Carries over:** the base is a namespace, not a website. The rules live in one place,
+`src/semantic_layer/ids.py`, and nothing builds an identifier by hand. Test data is
+minted under a segment accepted content never uses - `.../fixture/l2/` here, as
+`.../fixture/biz/` above - and `just test` checks every committed entity against what
+minting would produce.
+
+**Does not carry over:** an L2 identifier is not readable, and is not meant to be.
+`1347717349` is what GitHub calls the repository, and the point is precisely that a
+person cannot recognize it - because a name a person recognizes is a name somebody can
+change, and a rename that mints a second entity is the failure this rule exists to
+prevent. The readable part is an attribute: `tech:repositoryPath` says where the
+repository is reachable today, and a refresh rewrites it while the identifier stays put.

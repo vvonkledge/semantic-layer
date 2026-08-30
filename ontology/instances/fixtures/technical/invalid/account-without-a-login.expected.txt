@@ -1,0 +1,1 @@
+Account https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748 carries no tech:accountLogin. The handle is the only part of an account a person recognizes; the identifier is a number the source issued.

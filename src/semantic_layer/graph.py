@@ -21,14 +21,21 @@ from rdflib import Dataset, Graph, Namespace, URIRef
 from rdflib.namespace import RDF, SH
 
 BIZ = Namespace("https://semantic-layer.19h09.co/vocab/biz#")
+TECH = Namespace("https://semantic-layer.19h09.co/vocab/tech#")
 
 ROOT = Path(__file__).resolve().parents[2]
 ONTOLOGY = ROOT / "ontology"
 SHAPES_DIR = ONTOLOGY / "shapes"
-BUSINESS_DIR = ONTOLOGY / "instances" / "business"
-VALID_FIXTURES_DIR = ONTOLOGY / "instances" / "fixtures" / "valid"
-INVALID_FIXTURES_DIR = ONTOLOGY / "instances" / "fixtures" / "invalid"
+INSTANCES = ONTOLOGY / "instances"
+BUSINESS_DIR = INSTANCES / "business"
+TECHNICAL_DIR = INSTANCES / "technical"
+VALID_FIXTURES_DIR = INSTANCES / "fixtures" / "valid"
+INVALID_FIXTURES_DIR = INSTANCES / "fixtures" / "invalid"
+TECHNICAL_VALID_FIXTURES_DIR = INSTANCES / "fixtures" / "technical" / "valid"
+TECHNICAL_INVALID_FIXTURES_DIR = INSTANCES / "fixtures" / "technical" / "invalid"
 QUERIES_DIR = ROOT / "queries"
+SOURCES_DIR = ROOT / "sources"
+PACKS_DIR = ROOT / "packs"
 
 #: Each vocabulary file, under the IRI of the ontology it declares. The IRI is the
 #: name of the named graph the file is loaded into, which is what lets a shape ask a
@@ -36,7 +43,46 @@ QUERIES_DIR = ROOT / "queries"
 VOCABULARIES = {
     URIRef("https://semantic-layer.19h09.co/vocab/core"): ONTOLOGY / "core.ttl",
     URIRef("https://semantic-layer.19h09.co/vocab/biz"): ONTOLOGY / "biz.ttl",
+    URIRef("https://semantic-layer.19h09.co/vocab/tech"): ONTOLOGY / "tech.ttl",
 }
+
+#: L1: business truth the organization declared, true until it declares otherwise.
+CURATED_GRAPH = URIRef("https://semantic-layer.19h09.co/graph/l1-curated")
+
+#: L2: technical truth a source was observed to hold at an instant, and which decays.
+OBSERVED_GRAPH = URIRef("https://semantic-layer.19h09.co/graph/l2-observed")
+
+#: Which named graph each instance directory loads into. The classification is by
+#: directory and lives only here, because Turtle has no syntax for naming a graph:
+#: a file cannot declare itself observed or curated, so where it sits is the whole of
+#: what decides, and moving a file between layers is a visible move in a diff.
+INSTANCE_GRAPHS = {
+    BUSINESS_DIR: CURATED_GRAPH,
+    VALID_FIXTURES_DIR: CURATED_GRAPH,
+    INVALID_FIXTURES_DIR: CURATED_GRAPH,
+    TECHNICAL_DIR: OBSERVED_GRAPH,
+    TECHNICAL_VALID_FIXTURES_DIR: OBSERVED_GRAPH,
+    TECHNICAL_INVALID_FIXTURES_DIR: OBSERVED_GRAPH,
+}
+
+#: Every directory holding negative fixtures, one per layer.
+INVALID_FIXTURE_DIRS = (INVALID_FIXTURES_DIR, TECHNICAL_INVALID_FIXTURES_DIR)
+
+
+class LayerError(ValueError):
+    """An instance file sits where nothing says which layer it belongs to."""
+
+
+def instance_graph(path: Path) -> URIRef:
+    """The named graph ``path`` loads into, decided by the directory holding it."""
+    graph_name = INSTANCE_GRAPHS.get(path.resolve().parent)
+    if graph_name is None:
+        raise LayerError(
+            f"{path} is in no instance directory, so nothing says whether it holds curated "
+            f"business truth or observed technical truth. Instance files live in one of "
+            f"{sorted(str(d.relative_to(ROOT)) for d in INSTANCE_GRAPHS)}."
+        )
+    return graph_name
 
 
 def turtle_files(directory: Path) -> list[Path]:
@@ -53,26 +99,54 @@ def load(paths: Iterable[Path]) -> Graph:
 
 
 def data_graph(instances: Iterable[Path]) -> Dataset:
-    """The vocabulary plus the given instance files, with the two kept apart.
+    """The vocabularies plus the given instance files, with all four kept apart.
 
-    The vocabulary belongs in the data graph: ``sh:class`` resolves subclasses
-    against it, and the L1 boundary shape asks it which properties L1 defines. But a
-    shape validates one graph and cannot see where a triple came from, so a
+    A vocabulary belongs in the data graph: ``sh:class`` resolves subclasses against
+    it, and each layer's boundary shape asks it which properties that layer defines.
+    But a shape validates one graph and cannot see where a triple came from, so a
     vocabulary merged flat into the instances is a vocabulary any instance file can
     write to - two lines of ``rdfs:isDefinedBy`` and a technical term is L1.
 
     So each vocabulary is loaded into a named graph of its own, named by its ontology
-    IRI, and instances go to the default graph. Turtle cannot name a graph, so an
-    instance file can never reach a vocabulary graph. ``default_union`` keeps every
-    unqualified pattern - target selection, ``sh:class`` - reading the whole thing,
-    while a constraint that must not be answered by the data it is judging says
-    ``GRAPH`` and asks the vocabulary directly.
+    IRI. Instances are loaded into one of two more named graphs, curated or observed,
+    chosen by the directory the file sits in and nothing else. Turtle has no syntax
+    for naming a graph, so an instance file can reach neither a vocabulary graph nor
+    the other layer's data graph: what a vocabulary defines can only be said by a
+    vocabulary, and which layer a fact belongs to can only be said by where it is
+    committed.
+
+    That is what the two boundary shapes and the layer-separation shape rest on, and
+    it is the whole mechanism. ``default_union`` keeps every unqualified pattern -
+    target selection, ``sh:class`` - reading the whole thing, while a constraint that
+    must not be answered by the data it is judging says ``GRAPH`` and asks the graph
+    it means directly.
     """
     dataset = Dataset(default_union=True)
     for iri, path in VOCABULARIES.items():
         dataset.graph(iri).parse(path, format="turtle")
     for path in instances:
-        dataset.default_graph.parse(path, format="turtle")
+        dataset.graph(instance_graph(path)).parse(path, format="turtle")
+    return dataset
+
+
+def load_text(turtle: str) -> Graph:
+    """Parse a block of Turtle that is not on disk."""
+    return Graph().parse(data=turtle, format="turtle")
+
+
+def observed_data_graph(turtle: str) -> Dataset:
+    """The vocabularies plus one block of observed Turtle, as ``data_graph`` would load it.
+
+    A reconciled graph is validated before it is written, and a candidate has no
+    directory yet to be classified by. Naming the observed graph explicitly here is the
+    honest way to say that: it is the one place a caller chooses the layer rather than
+    the layout choosing it, and it exists so a graph that would not validate never
+    reaches the working tree in the first place.
+    """
+    dataset = Dataset(default_union=True)
+    for iri, path in VOCABULARIES.items():
+        dataset.graph(iri).parse(path, format="turtle")
+    dataset.graph(OBSERVED_GRAPH).parse(data=turtle, format="turtle")
     return dataset
 
 

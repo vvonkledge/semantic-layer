@@ -1,0 +1,21 @@
+# Competency question: which repository was observed, from which source, when, and on
+# what basis should a reader believe it?
+#
+# The first thing anyone asks of a technical fact, and the one L1 never has to answer.
+# A business fact is true because the organization declared it; a technical fact is
+# true as of the last time somebody looked, so every row here carries who looked, when,
+# and what they were in a position to see.
+
+PREFIX tech: <https://semantic-layer.19h09.co/vocab/tech#>
+
+SELECT ?repository ?path ?observation ?observedAt ?source ?provider ?trustBasis
+WHERE {
+    ?repository a tech:Repository ;
+                tech:repositoryPath ?path ;
+                tech:observedIn ?observation .
+    ?observation tech:observedAt ?observedAt ;
+                 tech:observedFrom ?source .
+    ?source tech:provider ?provider ;
+            tech:trustBasis ?trustBasis .
+}
+ORDER BY ?repository

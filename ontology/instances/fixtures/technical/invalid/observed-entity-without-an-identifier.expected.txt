@@ -1,0 +1,1 @@
+An observed entity was committed as a blank node, with no identifier. Every L2 entity carries an identifier minted under the source that produced it: a blank node cannot be re-observed, cited from a context pack, or matched against the next observation of the same thing. See docs/identifiers.md.

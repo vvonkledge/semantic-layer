@@ -1,0 +1,1 @@
+Artifact https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748 carries more than one tech:sourceLocalId. Two local names on one artifact means two things in the source were reconciled into one here.

@@ -1,0 +1,300 @@
+# L2 technical vocabulary: what was observed, from which source, and when it stops
+# being worth believing.
+#
+# L2 is not a second business layer. Every term below exists because a technical fact
+# is only true as of the last time somebody looked, so an L2 statement that cannot say
+# who looked and when is not a weaker fact - it is not a fact at all. That is the whole
+# difference from ontology/biz.ttl, where a statement is true because the organization
+# declared it and stays true until the organization declares otherwise.
+#
+# Exactly one term crosses between the layers, and it points upward: tech:realizes
+# says a technical artifact delivers a business capability. There is no downward term
+# and there will not be one, because a capability has to survive the deletion of every
+# system that ever delivered it (docs/l1-business-layer.md).
+#
+# Freshness is materialized, never computed at read time. tech:freshUntil is an
+# instant the reconciler wrote down, so a consumer asks "is my instant before it?" and
+# compares two timestamps. Nothing here invites duration arithmetic, which SPARQL
+# engines disagree about and which fails open (docs/evolution.md).
+#
+# Enforcement is SHACL, not a reasoner. rdfs:domain and rdfs:range below are
+# documentation for external consumers; no inference is ever run over this vocabulary.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://semantic-layer.19h09.co/vocab/tech>
+    a owl:Ontology ;
+    rdfs:label "Semantic layer technical vocabulary (L2)" ;
+    rdfs:comment "Observed technical truth: sources, observations, and the artifacts one observation attributes." ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://semantic-layer.19h09.co/vocab/core> .
+
+## Provenance: the three things every observed fact hangs off.
+
+tech:Source
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "Source" ;
+    rdfs:comment """A system observations are read from, at one installation of it. The source is the
+scope every identifier it contributes is minted under, so github.com and a GitHub Enterprise host are
+two sources and their identical numeric ids never collide. See docs/identifiers.md.""" .
+
+tech:Observation
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "Observation" ;
+    rdfs:comment """One act of reading one source at one instant. Every imported entity points at
+exactly one of these, which is what makes an L2 fact answerable for: without it a reader has a claim
+about a system and no way to ask when it was last true.""" .
+
+tech:Artifact
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "Artifact" ;
+    rdfs:comment "Anything imported from a source. The superclass exists so provenance and the layer boundary are stated once, for every kind of thing a source can name." .
+
+tech:Account
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:subClassOf tech:Artifact ;
+    rdfs:label "Account" ;
+    rdfs:comment """An account at the source: on GitHub, a user or an organization. It is not an
+Actor. An account is who the source says pushed something; who the organization holds accountable is
+an L1 decision nothing here is allowed to make.""" .
+
+tech:Repository
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:subClassOf tech:Artifact ;
+    rdfs:label "Repository" ;
+    rdfs:comment "A source-controlled repository at the source, identified by the immutable id the source issued it rather than by the path it is reachable at today." .
+
+tech:Branch
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:subClassOf tech:Artifact ;
+    rdfs:label "Branch" ;
+    rdfs:comment """A named line of development in one repository. GitHub issues a branch no
+immutable id, and git has none to issue: a branch is its name within its repository, and renaming
+one is a delete and a create. So a branch identifier carries both, and a rename is a different
+branch rather than the same one under a new name.""" .
+
+## Source attributes.
+
+tech:provider
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "provider" ;
+    rdfs:comment "Which kind of system this source is, as a slug: 'github'. Half of the scope every identifier from this source is minted under." ;
+    rdfs:domain tech:Source ;
+    rdfs:range xsd:string .
+
+tech:apiRoot
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "API root" ;
+    rdfs:comment "The endpoint this source was read from. Which installation of the provider was observed is not a detail: two of them issue the same ids for different things." ;
+    rdfs:domain tech:Source ;
+    rdfs:range xsd:anyURI .
+
+tech:trustBasis
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "trust basis" ;
+    rdfs:comment """Why a consumer should believe what this source said, in one sentence: what was
+read, with whose authority, and what that authority does not cover. A pack carries this so trust is
+a stated claim a reader can weigh rather than an assumption they inherit.""" ;
+    rdfs:domain tech:Source ;
+    rdfs:range xsd:string .
+
+## Observation attributes.
+
+tech:observedFrom
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "observed from" ;
+    rdfs:comment "Read: this observation was made by reading that source. Exactly one, because an observation spanning two sources cannot be reproduced from either." ;
+    rdfs:domain tech:Observation ;
+    rdfs:range tech:Source .
+
+tech:observedAt
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "observed at" ;
+    rdfs:comment "The instant the source was read. Not the instant the result was committed; git records that." ;
+    rdfs:domain tech:Observation ;
+    rdfs:range xsd:dateTime .
+
+tech:freshUntil
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "fresh until" ;
+    rdfs:comment """The instant after which this observation is stale. Materialized when the
+observation is reconciled, so asking whether a fact is fresh is a comparison of two timestamps and
+never duration arithmetic - which SPARQL engines disagree about and which fails open.""" ;
+    rdfs:domain tech:Observation ;
+    rdfs:range xsd:dateTime .
+
+tech:snapshotDigest
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "snapshot digest" ;
+    rdfs:comment "The SHA-256 of the captured response this observation was reconciled from, as 'sha256:<hex>'. It is what makes the graph checkable against the bytes it came from." ;
+    rdfs:domain tech:Observation ;
+    rdfs:range xsd:string .
+
+tech:observationTarget
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "observation target" ;
+    rdfs:comment "What was asked for, in the source's own terms: 'vvonkledge/siana'. A consumer expecting one target and handed another can tell." ;
+    rdfs:domain tech:Observation ;
+    rdfs:range xsd:string .
+
+## Artifact attributes.
+
+tech:observedIn
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "observed in" ;
+    rdfs:comment "Read: this artifact is what that observation saw. Exactly one, because an artifact attributed to two observations has two answers to 'when was this last true'." ;
+    rdfs:domain tech:Artifact ;
+    rdfs:range tech:Observation .
+
+tech:sourceLocalId
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "source local id" ;
+    rdfs:comment """The name this artifact has inside its source, kept verbatim so an identifier
+minted here can be traced back to the thing it was minted from. It is meaningless without the source,
+which is why it is never an identifier on its own.""" ;
+    rdfs:domain tech:Artifact ;
+    rdfs:range xsd:string .
+
+tech:webUrl
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "web URL" ;
+    rdfs:comment "Where a person can go and look at this artifact. Reported by the source, so it is constrained to https rather than believed." ;
+    rdfs:domain tech:Artifact ;
+    rdfs:range xsd:anyURI .
+
+tech:realizes
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "realizes" ;
+    rdfs:comment """Read: this technical artifact delivers that business capability. The only edge
+that crosses between the layers, and it points upward, from the thing that decays to the thing that
+does not. It is authored by a human under review and never imported: a source knows what it contains,
+not what the organization is accountable for. There is no downward term, because a capability outlives
+every system that ever delivered it.""" ;
+    rdfs:domain tech:Artifact ;
+    rdfs:range biz:Capability .
+
+## Account attributes.
+
+tech:accountLogin
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "account login" ;
+    rdfs:comment "The account's handle at the source. Renameable, which is exactly why it is an attribute and not the identifier." ;
+    rdfs:domain tech:Account ;
+    rdfs:range xsd:string .
+
+## Repository attributes.
+
+tech:ownedByAccount
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "owned by account" ;
+    rdfs:comment """Read: the source says this repository sits under that account. This is the
+source's own containment and nothing more. It is not biz:ownedBy, it names no Actor, and no
+accountability follows from it.""" ;
+    rdfs:domain tech:Repository ;
+    rdfs:range tech:Account .
+
+tech:defaultBranch
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "default branch" ;
+    rdfs:comment "Read: this branch is where the repository sends a reader who names none. It has to be a branch the same observation saw, or the observation is incomplete." ;
+    rdfs:domain tech:Repository ;
+    rdfs:range tech:Branch .
+
+tech:repositoryPath
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "repository path" ;
+    rdfs:comment "Where the repository is reachable today, as 'owner/name'. Renameable in one click, which is why it is an attribute: a rename rewrites this and leaves the identifier alone." ;
+    rdfs:domain tech:Repository ;
+    rdfs:range xsd:string .
+
+tech:visibility
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "visibility" ;
+    rdfs:comment "What the source says about who may read this repository: 'public', 'private', 'internal'." ;
+    rdfs:domain tech:Repository ;
+    rdfs:range xsd:string .
+
+tech:primaryLanguage
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "primary language" ;
+    rdfs:comment "The language the source reports most of the repository is written in. Absent where the source reports none, rather than guessed." ;
+    rdfs:domain tech:Repository ;
+    rdfs:range xsd:string .
+
+tech:archived
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "archived" ;
+    rdfs:comment "Whether the source has marked the repository read-only." ;
+    rdfs:domain tech:Repository ;
+    rdfs:range xsd:boolean .
+
+tech:pushedAt
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "pushed at" ;
+    rdfs:comment "When the source last saw a push. A fact about the repository, not about the observation: it is why an old observation of a quiet repository can still be worth reading." ;
+    rdfs:domain tech:Repository ;
+    rdfs:range xsd:dateTime .
+
+## Branch attributes.
+
+tech:branchOf
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "branch of" ;
+    rdfs:comment "Read: this branch belongs to that repository. Exactly one, because a branch name only identifies anything within one repository." ;
+    rdfs:domain tech:Branch ;
+    rdfs:range tech:Repository .
+
+tech:branchName
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "branch name" ;
+    rdfs:comment "The branch's name, verbatim. It is half of the branch's identity rather than a display label, and it is carried as an attribute too so a reader never has to decode an identifier to get it back." ;
+    rdfs:domain tech:Branch ;
+    rdfs:range xsd:string .
+
+tech:headCommit
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "head commit" ;
+    rdfs:comment "The commit the branch pointed at when it was observed, as a 40-character SHA-1. The one field here that says what the observation actually saw rather than how it was arranged." ;
+    rdfs:domain tech:Branch ;
+    rdfs:range xsd:string .
+
+tech:protected
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/tech> ;
+    rdfs:label "protected" ;
+    rdfs:comment "Whether the source enforces a rule before this branch may be written. What the rule is is not read: an unauthenticated caller is not shown it, and an empty answer would read as 'no rule'." ;
+    rdfs:domain tech:Branch ;
+    rdfs:range xsd:boolean .

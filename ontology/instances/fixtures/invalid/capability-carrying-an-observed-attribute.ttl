@@ -1,0 +1,24 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core: <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# An observed attribute copied onto a business capability, now that L2 has a real
+# vocabulary to copy it from. technical-fact-in-l1.ttl proves the boundary holds
+# against an invented term; this proves it holds against the one the other half
+# of this repository actually uses.
+
+<https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing>
+    a biz:Capability ;
+    rdfs:label "Payment processing" ;
+    biz:ownedBy <https://semantic-layer.19h09.co/fixture/biz/team/payments> ;
+    tech:repositoryPath "vvonkledge/siana" .
+
+<https://semantic-layer.19h09.co/fixture/biz/team/payments>
+    a biz:Team ;
+    rdfs:label "Payments team" .

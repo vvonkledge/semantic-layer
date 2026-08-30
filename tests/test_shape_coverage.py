@@ -234,9 +234,15 @@ SILENT_EDGES = frozenset({SH.property, SH.sparql, RDF.rest})
 
 SHAPES = graph.shapes_graph()
 
+#: Where a reader is sent to write the missing fixture. Both directories are named
+#: "invalid", so they are named by their path from the repository root or the
+#: diagnostic says the same word twice.
+FIXTURE_DIRECTORIES = [str(d.relative_to(graph.ROOT)) for d in graph.INVALID_FIXTURE_DIRS]
+
 COMMITTED_MESSAGES = [
     path.read_text(encoding="utf-8").strip()
-    for path in sorted(graph.INVALID_FIXTURES_DIR.glob("*.expected.txt"))
+    for directory in graph.INVALID_FIXTURE_DIRS
+    for path in sorted(directory.glob("*.expected.txt"))
 ]
 
 
@@ -614,8 +620,8 @@ def test_each_constraint_is_asserted_by_a_negative_fixture(name, message, parame
     pattern = _reads_like(message)
     assert any(pattern.fullmatch(committed) for committed in COMMITTED_MESSAGES), (
         f"{name} can be removed or loosened with a green suite: no fixture under "
-        f"{graph.INVALID_FIXTURES_DIR.name}/ commits its message. Add one that trips this "
-        f"constraint and nothing else."
+        f"{FIXTURE_DIRECTORIES} commits its message. Add one that "
+        f"trips this constraint and nothing else."
     )
 
 
@@ -639,7 +645,7 @@ def test_each_constraint_carries_exactly_one_message(name, parameters, messages)
     assert len(messages) == 1, (
         f"{name} carries no single sh:message ({len(messages)} found), so it is invisible "
         f"to the fixture check above and can be removed or loosened with a green suite. "
-        f"Give it one message, and a fixture under {graph.INVALID_FIXTURES_DIR.name}/ that "
+        f"Give it one message, and a fixture under one of {FIXTURE_DIRECTORIES} that "
         f"commits it."
     )
 

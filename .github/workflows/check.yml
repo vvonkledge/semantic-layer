@@ -4,8 +4,10 @@ on:
   push:
   pull_request:
 
-# The suite reads committed files and nothing else. No secrets are needed, and none
-# are granted.
+# The suite reads committed files and nothing else, and enforces that on itself: the
+# socket is taken away for the whole test session, so a test that reaches for the network
+# fails saying so. No secrets are needed, and none are granted. Capturing a new
+# observation is a local command a person runs and reviews, never something CI does.
 permissions:
   contents: read
 

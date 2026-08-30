@@ -1,0 +1,39 @@
+{
+  "api_root": "https://api.github.com",
+  "branches": {
+    "complete": true,
+    "items": [
+      {
+        "commit": {
+          "sha": "558d5f95a97775de2d786eee7ac1f4eb24c2f80f"
+        },
+        "name": "main",
+        "protected": false
+      }
+    ],
+    "pages": 1
+  },
+  "freshness_seconds": 86400,
+  "instance": "api-github-com",
+  "observed_at": "2026-08-30T06:07:15Z",
+  "provider": "github",
+  "repository": {
+    "archived": false,
+    "default_branch": "main",
+    "full_name": "vvonkledge/siana",
+    "html_url": "https://github.com/vvonkledge/siana",
+    "id": 1347717349,
+    "language": "Python",
+    "name": "siana",
+    "owner": {
+      "html_url": "https://github.com/vvonkledge",
+      "id": 121954748,
+      "login": "vvonkledge"
+    },
+    "pushed_at": "2026-08-30T05:07:19Z",
+    "visibility": "public"
+  },
+  "snapshot_version": 1,
+  "target": "vvonkledge/siana",
+  "trust_basis": "Unauthenticated GET of the public GitHub REST API, captured in full and hashed. It is what GitHub showed an anonymous caller at the observation instant and nothing more: no private repository, no protection rule, no permission and no field this contract does not read. It says what the repository was, never what the organization is accountable for."
+}

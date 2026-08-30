@@ -1,0 +1,18 @@
+[
+  {
+    "observation": "https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+    "target": "vvonkledge/siana",
+    "observedAt": "2026-08-30T06:07:15+00:00",
+    "freshUntil": "2026-08-31T06:07:15+00:00",
+    "asOf": "2026-08-30T18:00:00Z",
+    "fresh": "true"
+  },
+  {
+    "observation": "https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+    "target": "vvonkledge/siana",
+    "observedAt": "2026-08-30T06:07:15+00:00",
+    "freshUntil": "2026-08-31T06:07:15+00:00",
+    "asOf": "2026-09-04T09:30:00Z",
+    "fresh": "false"
+  }
+]
