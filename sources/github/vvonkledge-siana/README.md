@@ -6,9 +6,11 @@ instant recorded in it, projected onto the contract in
 branch, and nothing else. `snapshot.json.sha256` is the digest of those exact bytes.
 
 It is committed so the layer can be audited offline. `just test` reconciles it and
-asserts the result is byte-for-byte the graph committed under
-`ontology/instances/technical/`, so the graph and the bytes it came from can never drift
-apart unnoticed, and no test needs a network.
+asserts the result is byte-for-byte
+`ontology/instances/technical/github-vvonkledge-siana.ttl`, so the graph and the bytes it
+came from can never drift apart unnoticed, and no test needs a network. The hand-authored
+`tech:realizes` edge sits in a file of its own beside that one and is no part of this
+pairing: a source says what it holds, never what the organization is accountable for.
 
 Editing either file breaks the pair on purpose: `just reconcile` refuses when the
 snapshot and its digest disagree, because bytes nothing vouches for are not reconciled

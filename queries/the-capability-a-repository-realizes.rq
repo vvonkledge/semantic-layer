@@ -1,0 +1,32 @@
+# Competency question: which business capability does an observed repository deliver,
+# who answers for it, and what outcome does it serve?
+#
+# The question the two layers exist together to answer, and the only one that has to
+# walk the edge between them. Somebody holding a repository - or a context pack about
+# one - wants to know what the organization would lose if it went away, and that answer
+# is not in the repository: it is in L1, reached through the one upward edge a person
+# authored under review.
+#
+# Nothing here reads an observation instant or a commit. The repository path is an
+# attribute a rename rewrites, and everything past tech:realizes is curated business
+# truth with no expiry date, so this answer moves when the organization changes its
+# mind and not when the source drifts. That is the whole point of the edge pointing
+# upward: a capability outlives the system that delivered it.
+
+PREFIX biz:  <https://semantic-layer.19h09.co/vocab/biz#>
+PREFIX tech: <https://semantic-layer.19h09.co/vocab/tech#>
+PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?repository ?path ?capability ?capabilityLabel ?owner ?goal
+WHERE {
+    ?repository a tech:Repository ;
+                tech:repositoryPath ?path ;
+                tech:realizes ?capability .
+    ?capability a biz:Capability ;
+                rdfs:label ?capabilityLabel ;
+                biz:ownedBy ?owner ;
+                biz:supports ?goal .
+    FILTER NOT EXISTS { ?capability owl:deprecated true }
+}
+ORDER BY ?repository ?capability

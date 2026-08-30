@@ -1,5 +1,12 @@
 [
   {
+    "capability": "https://semantic-layer.19h09.co/biz/capability/orchestrate-fleet-delivery",
+    "capabilityLabel": "Orchestrate fleet delivery",
+    "owner": "https://semantic-layer.19h09.co/biz/person/captain",
+    "performer": "https://semantic-layer.19h09.co/biz/agent/siana",
+    "role": "https://semantic-layer.19h09.co/biz/role/fleet-orchestrator"
+  },
+  {
     "capability": "https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing",
     "capabilityLabel": "Payment processing",
     "owner": "https://semantic-layer.19h09.co/fixture/biz/team/payments",

@@ -115,21 +115,18 @@ def test_a_pack_asserts_nothing_about_a_business_entity(committed):
         assert not str(predicate).startswith("https://semantic-layer.19h09.co/vocab/biz#")
 
 
-def test_a_pack_carries_the_crossing_edge_and_not_what_is_on_the_other_side():
-    """Built from the fixtures, which have a tech:realizes edge; the accepted graph
-    has none yet, so asserting this against it would prove nothing today and would
-    break on the day somebody authored one.
-    """
-    observation = URIRef(
-        "https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/"
-        "3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
-    )
-    built = pack.build(
-        pack.observed(graph.turtle_files(graph.TECHNICAL_VALID_FIXTURES_DIR)), observation
-    )
-    content = graph.load_text(built.content.decode())
+def test_a_pack_carries_the_crossing_edge_and_not_what_is_on_the_other_side(committed):
+    """Asserted against the real pack, because the accepted graph now has a real edge.
 
-    capability = URIRef("https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing")
+    The edge is authored by hand in a file of its own beside the generated graph, and it
+    is the fact a consumer most wants: which capability the system they were handed
+    delivers. Everything else in the pack is a reading of GitHub, so this is the one
+    triple that could be dropped by a build that only followed provenance - and the one
+    that would drag declared business truth into a pack if it were followed too far.
+    """
+    content = graph.load_text(committed.content.decode())
+
+    capability = URIRef("https://semantic-layer.19h09.co/biz/capability/orchestrate-fleet-delivery")
     assert list(content.subjects(graph.TECH.realizes, capability)), (
         "the pack dropped the crossing edge, which is the fact a consumer most wants"
     )

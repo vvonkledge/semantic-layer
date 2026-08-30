@@ -24,17 +24,21 @@ def committed_instances() -> list:
 
 
 @pytest.fixture(scope="session")
-def fixture_graph():
-    """The valid fixtures alone, both layers.
+def question_graph(committed_instances):
+    """Everything committed as valid, which is what a question is asked of.
 
-    Competency questions are asserted against this graph rather than against curated
-    content or a real observation, so their committed answers stay stable as the
-    organization's L1 grows and as the source drifts.
+    Competency questions were once asked of the fixtures alone, because curated L1 was
+    empty and a question answered only by invented data was the only kind available. It
+    is not any more: the organization has declared what it does, and a question that
+    could not see that would be proving the vocabulary works rather than proving the
+    model answers.
+
+    So the fixtures stay - they exercise shapes the real content does not reach, such as
+    a retired capability and an owner who is not the performer - and the real content is
+    asked alongside them. A committed answer therefore carries both, and drift in either
+    is a failing build rather than a silent change of subject.
     """
-    return graph.data_graph(
-        graph.turtle_files(graph.VALID_FIXTURES_DIR)
-        + graph.turtle_files(graph.TECHNICAL_VALID_FIXTURES_DIR)
-    )
+    return graph.data_graph(committed_instances)
 
 
 @pytest.fixture(autouse=True, scope="session")

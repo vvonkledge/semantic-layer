@@ -17,10 +17,18 @@ just refresh    # capture, reconcile, pack
 git diff        # this is the review
 ```
 
-**Authored.** A `tech:realizes` edge - the one term that crosses into L1 - is a decision
-about what the organization is accountable for, so it is written by a person under
-review and belongs in a file of its own beside the generated one. No import writes one:
-a source knows what it contains, not what the organization answers for.
+**Authored.** `realizes-vvonkledge-siana.ttl` is the one term that crosses into L1: a
+single `tech:realizes` edge saying that the observed repository delivers the capability
+`Orchestrate fleet delivery`, which is declared in
+[`../business/`](../business/README.md). That is a decision about what the organization
+is accountable for, so it is written by a person under review and lives in a file of its
+own beside the generated one. No import writes one, and none ever will: a source knows
+what it contains, not what the organization answers for.
+
+The edge is an L2 statement about an L2 artifact, so it decays with the observation and
+travels in the context pack; the capability on the other end does not. Reading it the
+other way round is the mistake the direction exists to prevent - if the repository is
+deleted, this line goes and the capability is untouched.
 
 Everything under `../fixtures/technical/` is test data, minted in a namespace no accepted
 observation ever uses, and is not a statement about any real system.

@@ -1,0 +1,18 @@
+[
+  {
+    "repository": "https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349",
+    "path": "vvonkledge/siana",
+    "capability": "https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing",
+    "capabilityLabel": "Payment processing",
+    "owner": "https://semantic-layer.19h09.co/fixture/biz/team/payments",
+    "goal": "https://semantic-layer.19h09.co/fixture/biz/goal/checkout-reliability"
+  },
+  {
+    "repository": "https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349",
+    "path": "vvonkledge/siana",
+    "capability": "https://semantic-layer.19h09.co/biz/capability/orchestrate-fleet-delivery",
+    "capabilityLabel": "Orchestrate fleet delivery",
+    "owner": "https://semantic-layer.19h09.co/biz/person/captain",
+    "goal": "https://semantic-layer.19h09.co/biz/goal/accountable-delegation-with-peace-of-mind"
+  }
+]

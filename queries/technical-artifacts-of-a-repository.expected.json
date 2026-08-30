@@ -19,5 +19,19 @@
     "artifact": "https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748",
     "kind": "https://semantic-layer.19h09.co/vocab/tech#Account",
     "label": "vvonkledge"
+  },
+  {
+    "repository": "https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349",
+    "relation": "is a branch of",
+    "artifact": "https://semantic-layer.19h09.co/l2/github/api-github-com/branch/1347717349/main",
+    "kind": "https://semantic-layer.19h09.co/vocab/tech#Branch",
+    "label": "main"
+  },
+  {
+    "repository": "https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349",
+    "relation": "sits under",
+    "artifact": "https://semantic-layer.19h09.co/l2/github/api-github-com/account/121954748",
+    "kind": "https://semantic-layer.19h09.co/vocab/tech#Account",
+    "label": "vvonkledge"
   }
 ]

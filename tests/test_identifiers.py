@@ -105,3 +105,25 @@ def test_every_committed_entity_carries_the_identifier_minting_would_give_it(dir
         assert identifier.fixture is fixture, (
             f"{subject} lives in {directory.name} but is minted in the wrong namespace"
         )
+
+
+def test_curated_content_names_no_fixture_identifier():
+    """Not one, in any position, in the one directory that speaks for the organization.
+
+    The check above holds every entity the curated files *declare*, which is not the
+    whole risk: a curated capability owned by a fixture team, or serving a fixture goal,
+    declares nothing wrong and validates - the fixture end is a real, well-formed entity
+    committed elsewhere. What would be wrong is the sentence, and the graph would go on
+    saying it. So the fixture namespaces are refused here wherever they appear, and a
+    statement about the organization can never have an invented thing on either end of
+    it.
+    """
+    invented = (
+        f"{ids.BASE}{ids.FIXTURE_SEGMENT}",
+        f"{ids.BASE}{ids.FIXTURE_OBSERVED_SEGMENT}",
+    )
+    for triple in graph.load(graph.turtle_files(graph.BUSINESS_DIR)):
+        for term in triple:
+            assert not str(term).startswith(invented), (
+                f"curated business content names the fixture identifier {term}"
+            )
