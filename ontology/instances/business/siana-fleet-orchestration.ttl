@@ -1,0 +1,104 @@
+# Curated L1 truth: the first real slice of what this organization does.
+#
+# Everything below is something the organization declared about itself, in the
+# language it uses to say it. It is true because it was declared and reviewed, and it
+# stays true until the organization declares otherwise. Nothing here was read out of a
+# system, and nothing here decays.
+#
+# The slice is deliberately small: one outcome, the one thing the organization does to
+# reach it, who answers for that, the agent it is delegated to, what that agent is
+# permitted to do, the rule it works under, and the work itself. That is the whole
+# chain an audit walks, and it is written here once end to end rather than sketched
+# across several half-modelled areas.
+#
+# It names no repository, no branch, no queue, no command and no tool. Those are
+# technical facts, they are only true as of the last time somebody looked, and business
+# truth must not acquire an expiry date it has no way to honour. Which system happens to
+# deliver the capability below is said in L2, by a single upward edge, and is not said
+# here.
+
+@prefix biz:    <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix goal:   <https://semantic-layer.19h09.co/biz/goal/> .
+@prefix cap:    <https://semantic-layer.19h09.co/biz/capability/> .
+@prefix person: <https://semantic-layer.19h09.co/biz/person/> .
+@prefix agent:  <https://semantic-layer.19h09.co/biz/agent/> .
+@prefix role:   <https://semantic-layer.19h09.co/biz/role/> .
+@prefix policy: <https://semantic-layer.19h09.co/biz/policy/> .
+@prefix asg:    <https://semantic-layer.19h09.co/biz/assignment/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+## The outcome.
+
+goal:accountable-delegation-with-peace-of-mind
+    a biz:Goal ;
+    rdfs:label "Accountable delegation with peace of mind" ;
+    rdfs:comment """What the captain asks for becomes an outcome they can rely on without having to
+supervise how it was produced. Delegation that has to be watched is not delegation, and an outcome
+nobody answers for is not one worth having, so both halves are the goal rather than one of them.""" .
+
+## What the organization does about it.
+
+cap:orchestrate-fleet-delivery
+    a biz:Capability ;
+    rdfs:label "Orchestrate fleet delivery" ;
+    rdfs:comment """Turning the captain's intent into work that is bounded before it starts, accepted
+independently of whoever did it where that is required, and stopped at every point where the decision
+belongs to a human. It is the capability, not the machinery: it outlives any particular way of
+carrying it out.""" ;
+    biz:supports goal:accountable-delegation-with-peace-of-mind ;
+    biz:ownedBy person:captain .
+
+## Who answers for it.
+
+person:captain
+    a biz:Person ;
+    rdfs:label "Captain" ;
+    rdfs:comment """The human this organization exists to serve, and its default authority. The
+capability is owned here because the decisions delegated work is not allowed to make stay with the
+captain, and ownership is the model's word for who answers when one of them goes wrong.""" .
+
+## Who it is delegated to.
+
+agent:siana
+    a biz:AgentIdentity ;
+    rdfs:label "SIANA" ;
+    rdfs:comment """The non-human actor the organization has put between the captain's intent and the
+work that carries it out. It is modelled as an actor rather than as a mechanism because the
+organization holds it to account the same way it holds a person: it is granted a role, it is given
+work, and the work is attributable to it afterwards.""" ;
+    biz:grantsRole role:fleet-orchestrator .
+
+## What it is permitted to do.
+
+role:fleet-orchestrator
+    a biz:Role ;
+    rdfs:label "Fleet orchestrator" ;
+    rdfs:comment """Permission to run the interface between intent and delivery. Being asked to do
+this work is not what makes it allowed; holding this role is, and that is why the permission is
+written down separately from the assignment that exercises it.""" ;
+    biz:permits cap:orchestrate-fleet-delivery .
+
+## Under what rule.
+
+policy:captain-governed-fleet-operation
+    a biz:Policy ;
+    rdfs:label "Captain-governed fleet operation" ;
+    rdfs:comment """The captain is the default authority for every gate, and autonomy exists only
+where the captain has explicitly granted it - never inferred from an earlier grant or from how
+routine the work looks. Decisions only a human can make are put to the captain rather than taken.
+Where independent validation is required, that validation is the acceptance boundary and work is not
+accepted on the word of whoever produced it. Publishing work for review is never authority to merge
+it: what lands is the captain's decision.""" .
+
+## The work itself.
+
+asg:operate-the-captains-fleet-interface
+    a biz:Assignment ;
+    rdfs:label "Operate the captain's fleet interface" ;
+    rdfs:comment """The standing work SIANA is given: hold the layer between what the captain asks
+for and what the fleet does, for as long as the organization wants the outcome above.""" ;
+    biz:assignedTo agent:siana ;
+    biz:targetsCapability cap:orchestrate-fleet-delivery ;
+    biz:servesGoal goal:accountable-delegation-with-peace-of-mind ;
+    biz:governedBy policy:captain-governed-fleet-operation .
+

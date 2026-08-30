@@ -27,6 +27,7 @@
 <https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349> <https://semantic-layer.19h09.co/vocab/tech#ownedByAccount> <https://semantic-layer.19h09.co/l2/github/api-github-com/account/121954748> .
 <https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349> <https://semantic-layer.19h09.co/vocab/tech#primaryLanguage> "Python" .
 <https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349> <https://semantic-layer.19h09.co/vocab/tech#pushedAt> "2026-08-30T05:07:19+00:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+<https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349> <https://semantic-layer.19h09.co/vocab/tech#realizes> <https://semantic-layer.19h09.co/biz/capability/orchestrate-fleet-delivery> .
 <https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349> <https://semantic-layer.19h09.co/vocab/tech#repositoryPath> "vvonkledge/siana" .
 <https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349> <https://semantic-layer.19h09.co/vocab/tech#sourceLocalId> "1347717349" .
 <https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349> <https://semantic-layer.19h09.co/vocab/tech#visibility> "public" .

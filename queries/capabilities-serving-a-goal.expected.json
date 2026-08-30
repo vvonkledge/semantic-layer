@@ -1,5 +1,11 @@
 [
   {
+    "goal": "https://semantic-layer.19h09.co/biz/goal/accountable-delegation-with-peace-of-mind",
+    "goalLabel": "Accountable delegation with peace of mind",
+    "capability": "https://semantic-layer.19h09.co/biz/capability/orchestrate-fleet-delivery",
+    "capabilityLabel": "Orchestrate fleet delivery"
+  },
+  {
     "goal": "https://semantic-layer.19h09.co/fixture/biz/goal/checkout-reliability",
     "goalLabel": "Checkout reliability",
     "capability": "https://semantic-layer.19h09.co/fixture/biz/capability/fraud-screening",

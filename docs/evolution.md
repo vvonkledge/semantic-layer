@@ -102,6 +102,8 @@ what to do when a capture fails - is in [l2-technical-layer.md](l2-technical-lay
 A `tech:realizes` edge is the exception, and the only thing under
 `ontology/instances/technical/` a human writes: it is a decision about the organization,
 so it is authored under review and lives in a file of its own beside the generated one.
+`realizes-vvonkledge-siana.ttl` is the one that is committed, and it is what an edit here
+should look like.
 
 ## Two traps that fail quietly
 

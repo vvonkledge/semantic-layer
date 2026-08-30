@@ -23,3 +23,7 @@ def test_both_layers_are_present(committed_instances):
     assert graph.turtle_files(graph.TECHNICAL_VALID_FIXTURES_DIR)
     assert graph.turtle_files(graph.TECHNICAL_DIR)
     assert graph.turtle_files(graph.VALID_FIXTURES_DIR)
+    # Curated L1 was empty for two phases and is not any more. It is asserted here
+    # rather than assumed because the boundary shapes and the crossing edge only say
+    # anything with real business truth loaded beside the observation.
+    assert graph.turtle_files(graph.BUSINESS_DIR)

@@ -1,0 +1,22 @@
+# AUTHORED, NOT GENERATED. The one edge that crosses between the layers.
+#
+# It says: the repository this layer observed at github.com is one of the systems the
+# organization delivers "Orchestrate fleet delivery" with. That is a judgement about
+# what the organization is accountable for, so a person made it under review. No import
+# writes one and none ever will - a source knows what it contains, never what the
+# organization answers for - which is why this is a file of its own rather than a line
+# in the generated graph beside it. `just test` asserts that generated file is exactly
+# what the committed capture reconciles to, so a line added there would fail the build;
+# a line here is reviewed instead.
+#
+# The edge points upward, from the thing that decays to the thing that does not. It is
+# an L2 statement about an L2 artifact, so it lives here and travels in the context
+# pack. The capability on the other end is curated L1 truth under
+# ../business/siana-fleet-orchestration.ttl and stays there: it has no observation
+# behind it and no freshness to state. If the repository is deleted tomorrow, the
+# capability is untouched and this line is what goes.
+
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+
+<https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349>
+    tech:realizes <https://semantic-layer.19h09.co/biz/capability/orchestrate-fleet-delivery> .

@@ -1,5 +1,12 @@
 [
   {
+    "assignment": "https://semantic-layer.19h09.co/biz/assignment/operate-the-captains-fleet-interface",
+    "agent": "https://semantic-layer.19h09.co/biz/agent/siana",
+    "capability": "https://semantic-layer.19h09.co/biz/capability/orchestrate-fleet-delivery",
+    "goal": "https://semantic-layer.19h09.co/biz/goal/accountable-delegation-with-peace-of-mind",
+    "policy": "https://semantic-layer.19h09.co/biz/policy/captain-governed-fleet-operation"
+  },
+  {
     "assignment": "https://semantic-layer.19h09.co/fixture/biz/assignment/investigate-payment-declines",
     "agent": "https://semantic-layer.19h09.co/fixture/biz/agent/remediator",
     "capability": "https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing",

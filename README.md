@@ -53,8 +53,9 @@ ontology/
   tech.ttl                    the L2 technical vocabulary
   shapes/biz.ttl              SHACL: what a valid business graph looks like
   shapes/tech.ttl             SHACL: what a valid observed graph looks like
-  instances/business/         curated L1 content (empty until authored)
-  instances/technical/        accepted L2 truth, reconciled from a capture
+  instances/business/         curated L1 content the organization declared
+  instances/technical/        accepted L2 truth, reconciled from a capture,
+                              plus the one hand-authored edge that crosses up
   instances/fixtures/         test data, valid and invalid, one pair per layer;
                               each invalid fixture commits the exact message it
                               must be rejected with
@@ -79,7 +80,11 @@ technical artifact `tech:realizes` a business capability, never the reverse, bec
 capability has to survive the deletion of every system that ever delivered it.
 
 That edge is authored by a human under review. No import writes one: a source knows what
-it contains, not what the organization answers for.
+it contains, not what the organization answers for. There is one of them committed -
+`ontology/instances/technical/realizes-vvonkledge-siana.ttl`, saying that the repository
+this layer observes delivers the capability `Orchestrate fleet delivery` - and it is in a
+file of its own beside the generated graph, so the reviewed line and the imported ones
+are never mistaken for each other.
 
 The boundary is enforced three ways, and each has a negative fixture that commits the
 message it is rejected with. Two ask what a node may *say*, by asking each vocabulary -
@@ -111,8 +116,10 @@ to be the other layer.
    coverage guarantee that would not hold for them, both groups are prohibited by name
    and by term. The parameters the modifiers move - `sh:pattern`, `sh:closed` - are
    supported and audited like any other.
-5. Every competency question returns its committed answer, so a vocabulary change that
-   stops the model answering a question fails the build.
+5. Every competency question returns its committed answer, asked of everything committed
+   as valid - the real content and the fixtures together - so a vocabulary change that
+   stops the model answering a question fails the build, and so does a change to what
+   the organization declared that nobody meant to make.
 6. Every committed entity carries exactly the identifier minting would give it, in both
    layers, so a fixture cannot leak into curated content or into an accepted
    observation - and an entity written with no identifier at all is rejected rather than
@@ -137,10 +144,15 @@ The whole suite is deterministic and runs in a few seconds.
 
 ## Scope
 
-This is phase 1: L1 as phase 0 left it, plus one complete L2 vertical slice against one
-real source - the public GitHub metadata for `vvonkledge/siana`.
+This is phase 2: one complete L2 vertical slice against one real source - the public
+GitHub metadata for `vvonkledge/siana` - and, above it, the first real slice of L1.
+
+L1 now says one thing end to end: the outcome the organization wants, the capability it
+exercises to reach it, who answers for that, the agent it is delegated to, what that
+agent is permitted to do, and the policy the work is carried out under. It was authored
+by a person from what the organization declared about itself, not inferred from what the
+repository below it contains, because a source knows what it holds and never what the
+organization answers for. One reviewed `tech:realizes` edge joins the two, and it points
+upward.
 
 There is no execution trace, no runtime, no server, no write-back, and no second source.
-`ontology/instances/business/` is deliberately still empty: authoring the organization's
-own business content is a human decision, and no amount of technical evidence is a reason
-to make it.

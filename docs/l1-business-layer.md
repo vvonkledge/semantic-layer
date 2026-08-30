@@ -85,28 +85,53 @@ change to a small file, and [evolution.md](evolution.md) says what to look for.
 
 ## What the model can be asked
 
-Three questions are committed as queries in `queries/`, with their answers committed
-beside them. They are the ontology's acceptance tests: a vocabulary change that stops
-the model answering a business question fails the build.
+Four questions with a business answer are committed as queries in `queries/`, with their
+answers committed beside them. They are the ontology's acceptance tests: a vocabulary
+change that stops the model answering a business question fails the build, and so does a
+change to what the organization declared that nobody meant to make. Each is asked of
+everything committed as valid, so every one of them returns the organization's own
+content alongside the fixtures.
 
 - **Which capabilities serve this goal?** - where effort should go.
 - **Who owns this capability, and who may perform it?** - ownership and permission are
   different answers, and the model must not conflate them.
 - **Under which policy is this agent doing this work?** - the audit question. One row
   carries agent, capability, goal and policy.
+- **Which capability does this repository realize?** - the question that walks the edge
+  between the layers, for somebody holding a system and wanting to know what the
+  organization would lose without it. It reads no observation instant and no commit, so
+  its answer moves when the organization changes its mind rather than when the source
+  drifts.
+
+## What is declared, today
+
+`ontology/instances/business/` holds one slice, authored by a person from what the
+organization declared about itself: the goal **Accountable delegation with peace of
+mind**, the capability **Orchestrate fleet delivery** that serves it, the **Captain** who
+owns that capability, the agent identity **SIANA** it is delegated to, the **Fleet
+orchestrator** role that permits it, the policy **Captain-governed fleet operation** the
+work runs under, and the assignment joining all of them. One chain end to end, rather
+than several areas half modelled.
+
+It was not read out of the repository underneath it. L2 holds a real observation of a
+real system, and no amount of that is a reason to write a line here: a source knows what
+it contains, never what the organization answers for. The single sentence that connects
+the two is a reviewed `tech:realizes` edge, written in L2 and pointing up.
 
 ## What is deliberately not here
 
-No technical entities, no freshness or staleness, no execution traces, no runtime data,
-and no real organizational content. Freshness in particular belongs to L2 and stops
-there: an L1 statement has no observation behind it, because nobody observed the
-organization deciding what it is accountable for - they wrote it down.
+No technical entities, no freshness or staleness, no execution traces and no runtime
+data. Freshness in particular belongs to L2 and stops there: an L1 statement has no
+observation behind it, because nobody observed the organization deciding what it is
+accountable for - they wrote it down.
 
-`ontology/instances/business/` is where curated content lands, and it is empty on purpose
-until the organization's own goals and capabilities are authored. L2 now holds a real
-observation of a real repository, and that is not a reason to fill it: nothing about what
-a system contains says what the organization answers for.
+Nor is there a second capability, a team, a product or a customer. The slice above is
+bounded on purpose: what is written here is what the organization has actually declared,
+and inventing the rest to make the model look complete would put fiction in the one place
+that is supposed to be true by declaration.
 
 Everything under `ontology/instances/fixtures/` is test data and is minted in namespaces
 no curated entity and no accepted observation ever uses, so the two can never be
-confused.
+confused. The fixtures stay because they exercise what the real content does not reach - a
+retired capability, an owner who is not the performer - and not because L1 is short of
+content.

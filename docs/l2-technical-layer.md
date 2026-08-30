@@ -10,9 +10,9 @@ immediately. Mixing them gives business truth an expiry date it cannot honour an
 technical truth an authority it has not earned, so they are separate vocabularies, in
 separate files, in separate named graphs, with one edge between them.
 
-Phase 1 builds one vertical slice of L2, end to end, against one real source: the
-public GitHub metadata for `vvonkledge/siana`. It is the first source, not a GitHub
-ingestion framework.
+This is one vertical slice of L2, end to end, against one real source: the public
+GitHub metadata for `vvonkledge/siana`. It is the first source, not a GitHub ingestion
+framework.
 
 ## The five things it describes
 
@@ -51,12 +51,21 @@ GitHub reconciler writes a `tech:realizes` edge, and
 `tests/test_reconciliation.py::test_the_import_writes_no_crossing_edge` is what keeps
 that true.
 
-Writing one is two lines in a file under `ontology/instances/technical/`:
+Writing one is two lines in a file under `ontology/instances/technical/`, and there is
+exactly one committed - `realizes-vvonkledge-siana.ttl`, which says the repository this
+layer observes is one of the systems the organization delivers `Orchestrate fleet
+delivery` with:
 
 ```turtle
 <https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349>
-    tech:realizes <https://semantic-layer.19h09.co/biz/capability/agent-orchestration> .
+    tech:realizes <https://semantic-layer.19h09.co/biz/capability/orchestrate-fleet-delivery> .
 ```
+
+It is a file of its own beside `github-vvonkledge-siana.ttl` rather than a line inside
+it, because that file is generated: the suite asserts it is exactly what the committed
+capture reconciles to, so a hand-written line there fails the build. The separation is
+also what a reviewer reads - one file is a reading of a system, the other is a judgement
+about the organization, and they are never mixed in one diff.
 
 The capability end lives in `ontology/instances/business/`, and the two files are in
 different graphs. That is deliberate: the edge is an L2 statement about an L2 thing, so
@@ -213,6 +222,14 @@ git diff        # this is the review
 4. **The diff is the candidate.** It becomes accepted L2 truth when it is reviewed and
    merged. Nothing reads from a branch.
 
+A refresh that changes something changes the committed competency answers too, because
+the questions are asked of everything committed as valid and two of them report the
+observation. That is intended: the answers a consumer is promised are part of what a
+refresh moves, so they are reviewed in the same diff rather than drifting behind it.
+Re-run `just test`, which names the question whose answer moved, and commit the new one
+with the observation it came from. The authored `tech:realizes` edge is untouched by any
+of this - it names the repository by its identifier, which a refresh never changes.
+
 `just check` then holds all of it together: the committed graph must be exactly what the
 committed snapshot reconciles to, the committed pack must be exactly what the committed
 graph packs, and both must satisfy every shape.
@@ -365,5 +382,7 @@ daemon, no server, no database. No write-back of any kind: nothing here sends an
 to GitHub but a GET. No authentication, no secrets, no private repositories. No workflow
 runs, jobs or deployments - those are execution traces, which is L3 and does not exist.
 
-And no business content inferred from any of it. `ontology/instances/business/` is still
-empty, on purpose, and no amount of technical evidence is a reason to fill it.
+And no business content inferred from any of it. `ontology/instances/business/` is no
+longer empty, and nothing in this layer is why: what is there was declared by the
+organization and authored by a person under review. The single sentence joining the two
+is the `tech:realizes` edge above, and a person wrote that too.

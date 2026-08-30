@@ -18,15 +18,15 @@ def test_the_model_answers_at_least_three_questions():
 
 
 @pytest.mark.parametrize("query_file", QUERIES, ids=lambda path: path.stem)
-def test_query_returns_its_committed_answer(query_file, fixture_graph):
+def test_query_returns_its_committed_answer(query_file, question_graph):
     expected_file = query_file.with_suffix(".expected.json")
     assert expected_file.exists(), f"{query_file.name} has no committed expected result"
     expected = json.loads(expected_file.read_text(encoding="utf-8"))
 
-    assert graph.query(fixture_graph, query_file) == expected
+    assert graph.query(question_graph, query_file) == expected
 
 
 @pytest.mark.parametrize("query_file", QUERIES, ids=lambda path: path.stem)
-def test_query_returns_something(query_file, fixture_graph):
-    """A question the fixtures cannot exercise is not being tested by anything."""
-    assert graph.query(fixture_graph, query_file)
+def test_query_returns_something(query_file, question_graph):
+    """A question nothing committed can exercise is not being tested by anything."""
+    assert graph.query(question_graph, query_file)

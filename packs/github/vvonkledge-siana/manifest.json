@@ -1,8 +1,8 @@
 {
   "api_root": "https://api.github.com",
   "artifact_count": 3,
-  "content_bytes": 7698,
-  "content_digest": "sha256:9ef03a7cad12cbedf8189f0e83d3880d7cacdb9cb1d35ea50921b041fb3cd938",
+  "content_bytes": 7911,
+  "content_digest": "sha256:69eeccc56c290790fa4e8310842e21da69d240d5cb0951217fa4062621a9764e",
   "content_media_type": "application/n-triples",
   "fresh_until": "2026-08-31T06:07:15Z",
   "graph": "https://semantic-layer.19h09.co/graph/l2-observed",
