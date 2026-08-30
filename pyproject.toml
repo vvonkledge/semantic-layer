@@ -1,17 +1,27 @@
 [project]
 name = "semantic-layer"
-version = "0.1.0"
-description = "L1 business ontology: what the organization does, who is accountable, and under which policy agents may act."
+version = "0.2.0"
+description = "Three layers of truth - declared, observed and recorded - as files in git, a library over them, and one process boundary a consumer can pin."
 requires-python = ">=3.11"
 dependencies = [
     "rdflib>=7.1",
     "pyshacl>=0.29",
 ]
 
+# The process boundary. A consumer pins this command and the response version it
+# emits, never this package's version and never an import of its internals: see
+# docs/cli.md.
+[project.scripts]
+semantic-layer = "semantic_layer.cli:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8.3",
     "ruff>=0.8",
+    # Used by tests/test_packaging.py, which builds the wheel in process and reads
+    # what is in it. The build backend below is the same one, so what that test
+    # inspects is the wheel a consumer installs and not an approximation of it.
+    "hatchling>=1.27",
 ]
 
 [build-system]
@@ -20,6 +30,21 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/semantic_layer"]
+
+# The vocabularies and the shapes, carried into the wheel beside the code, because an
+# installed consumer verifying a pack has to read the vocabulary version it was built
+# for and has no checkout to read it out of. Listed one by one rather than as a
+# directory: `ontology/instances/` holds this site's own facts and the suite's
+# fixtures, and neither belongs in a wheel anybody can install. A vocabulary or shape
+# added without a line here is a failing build - see tests/test_packaging.py.
+[tool.hatch.build.targets.wheel.force-include]
+"ontology/core.ttl" = "semantic_layer/_ontology/core.ttl"
+"ontology/biz.ttl" = "semantic_layer/_ontology/biz.ttl"
+"ontology/tech.ttl" = "semantic_layer/_ontology/tech.ttl"
+"ontology/trace.ttl" = "semantic_layer/_ontology/trace.ttl"
+"ontology/shapes/biz.ttl" = "semantic_layer/_ontology/shapes/biz.ttl"
+"ontology/shapes/tech.ttl" = "semantic_layer/_ontology/shapes/tech.ttl"
+"ontology/shapes/trace.ttl" = "semantic_layer/_ontology/shapes/trace.ttl"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

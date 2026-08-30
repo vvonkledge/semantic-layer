@@ -374,6 +374,11 @@ every shape its rule cannot read and asserts the type and the sentence.
 question supplies its own: a check against "now" answers a different question every time
 it runs, and cannot be tested at all.
 
+A consumer in another project does the same thing without importing any of it:
+`semantic-layer pack verify` runs exactly this verifier and answers with one versioned
+JSON document, and `semantic-layer pack export` hands back the exact bytes that
+verified. See [cli.md](cli.md).
+
 The pack is also the join key between this layer and the evidence above it. A recorded
 run names the exact pack it was handed, by the digest of each of its halves, and
 `semantic_layer.trace` gets those digests by running this same verifier rather than by
