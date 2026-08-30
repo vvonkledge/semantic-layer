@@ -333,7 +333,10 @@ shows up once something real is being recorded:
   characters once encoded - mints an identifier past the store's 300-character bound.
   That is refused by the writer, as a `TraceError` naming the length and what to do about
   it, rather than surfacing from inside the transaction as a SQLite integrity error
-  naming a column. The same holds for the agent identity a run is associated with.
+  naming a column. The same holds for the agent identity a run is associated with, and
+  for a metric value: Python's integers have no width and the column that records one
+  has sixty-four bits, so a measurement past that bound is refused by name here rather
+  than as an `OverflowError` raised by sqlite3 mid-write.
 
 ## Identifiers
 

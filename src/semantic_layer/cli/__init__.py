@@ -359,10 +359,10 @@ def _exported(half: bytes, name: str) -> dict:
     """One verified half, as text a JSON document can carry without losing a byte.
 
     JSON has no bytes, so the encoding is stated rather than assumed. Both halves are
-    UTF-8 by the time they get here in every case this reader accepts one - the content
-    parsed as N-Triples and the manifest parsed as JSON - but "in every case that
-    verified" is a claim about rdflib and the json module rather than about these bytes,
-    so it is checked here and refused rather than exported lossily.
+    UTF-8 by the time they get here in every case this reader accepts one - ``pack.verify``
+    decodes the manifest itself, and rdflib refuses content that is not - but "in every
+    case that verified" is a claim about code upstream of this line rather than about
+    these bytes, so it is checked here and refused rather than exported lossily.
     """
     try:
         return {"encoding": "utf-8", "text": half.decode("utf-8")}

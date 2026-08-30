@@ -288,8 +288,22 @@ def verify(
         if not isinstance(value, bytes):
             raise PackError(f"{name} is {type(value).__name__}, and a pack half is the bytes")
 
+    # Decoded here rather than left to ``json.loads``, which takes bytes and decides the
+    # encoding for itself from a byte order mark - so a manifest beginning with two bytes
+    # somebody chose would be read as UTF-16 and mean something else entirely, and one
+    # that decodes as nothing at all would raise ``UnicodeDecodeError`` out of the json
+    # module, which is not the refusal a consumer was told to catch. A manifest is JSON,
+    # JSON here is UTF-8, and bytes that are not that are not a manifest.
     try:
-        stated = json.loads(manifest)
+        text = manifest.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise PackError(
+            f"the manifest is not UTF-8: {error}. Both halves of a pack are UTF-8, which is "
+            f"what the manifest's own content_media_type says of the other one."
+        ) from error
+
+    try:
+        stated = json.loads(text)
     except json.JSONDecodeError as error:
         raise PackError(f"the manifest is not valid JSON: {error}") from error
     except RecursionError as error:

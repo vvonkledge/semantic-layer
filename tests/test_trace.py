@@ -295,6 +295,37 @@ def _branch(name: str) -> str:
 BRANCH_ROOM = model.IRI_MAX_LENGTH - len(_branch("x")) + 1
 AGENT_ROOM = model.IRI_MAX_LENGTH - len(ids.mint("agent", "a")) + 1
 
+
+@pytest.mark.parametrize(
+    "value",
+    [model.METRIC_VALUE_MIN, model.METRIC_VALUE_MAX, 0, -1],
+    ids=["the smallest", "the largest", "nothing", "below nothing"],
+)
+def test_a_measurement_the_column_can_hold_is_recorded(store, accepted_pack, value):
+    record(store, run(metrics=[Metric("branches-read", value, "count")]), accepted_pack)
+    assert store.read(TRACE_ID).run.metrics == (Metric("branches-read", value, "count"),)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [model.METRIC_VALUE_MAX + 1, model.METRIC_VALUE_MIN - 1, 10**40],
+    ids=["one past the largest", "one past the smallest", "far past either"],
+)
+def test_a_measurement_wider_than_the_column_is_refused_and_writes_nothing(
+    store, accepted_pack, value
+):
+    """Python's integers have no width; the column that records one has sixty-four bits.
+
+    Left to SQL this arrives as an ``OverflowError`` raised by sqlite3 from inside the
+    transaction - not a ``TraceError``, so a caller catching the documented refusal never
+    sees it, and at a process boundary it is a traceback rather than an answer. It is the
+    same argument as ``IRI_MAX_LENGTH``, and it is bounded in the same place.
+    """
+    with pytest.raises(TraceError, match="records a measurement between"):
+        record(store, run(metrics=[Metric("branches-read", value, "count")]), accepted_pack)
+    assert _empty(store)
+
+
 #: An accented character costs six characters once percent-encoded, which is how a
 #: branch name far shorter than the ASCII limit still mints an identifier past it.
 ACCENTED_FITS = "é" * (BRANCH_ROOM // 6)

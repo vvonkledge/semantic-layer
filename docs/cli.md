@@ -343,7 +343,10 @@ missing one is refused as partial.
 
 `operation`, `name` and `code` are slugs - lower-case letters and digits joined by
 single hyphens, at most 64 characters. `touched`, `about` and `agent` must be
-identifiers this layer mints (see [identifiers.md](identifiers.md)).
+identifiers this layer mints (see [identifiers.md](identifiers.md)), each at most 300
+characters. A metric `value` is a whole number the store's column can hold: between
+-2^63 and 2^63-1. Nothing a run measures comes near that; a number that does is a
+counter that wrapped, or was never a count.
 
 ### What is refused, and by which half
 
@@ -359,10 +362,10 @@ default. The message names the field and the
 
 **Content, refused as `trace` at exit 1**: a trace id that is not 32 hex characters, a
 value outside a closed set, an instant spelled another way, a span outside its run, a
-cycle in the span tree, two root spans, a reference longer than the store can hold, or a
-name that is not a slug. None of it is reimplemented here; the document is converted
-into the model's own records and `semantic_layer.trace.model.validate` refuses it with
-the sentence it already writes.
+cycle in the span tree, two root spans, a reference longer than the store can hold, a
+measurement wider than the column that records it, or a name that is not a slug. None of
+it is reimplemented here; the document is converted into the model's own records and
+`semantic_layer.trace.model.validate` refuses it with the sentence it already writes.
 
 There is no field for a prompt, a completion, a tool argument, a tool result, a request
 or response body, an environment, a blob, or a free-form attribute - and there is no

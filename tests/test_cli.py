@@ -415,6 +415,12 @@ def test_a_manifest_that_is_not_json_is_refused(invoke, pack_dir):
     _refuse_pack(invoke, pack_dir)
 
 
+def test_a_manifest_that_is_not_utf8_is_refused(invoke, pack_dir):
+    """The other half of the pair: content that is not UTF-8 is covered above."""
+    (pack_dir / packs.MANIFEST_NAME).write_bytes(b"\xff\xfe not text at all")
+    _refuse_pack(invoke, pack_dir)
+
+
 @pytest.mark.parametrize("command", ["verify", "export"])
 def test_a_manifest_nested_past_the_parser_is_refused_as_a_document(invoke, pack_dir, command):
     """A traceback is not a document, and this is the way one got out.
@@ -844,6 +850,26 @@ def test_an_input_longer_than_this_command_reads_is_refused(
     )
     assert answer.status == 1
     assert answer.error["kind"] == "path"
+    assert _recorded(store_path) == ()
+
+
+def test_a_measurement_wider_than_the_store_is_refused_as_a_document(
+    invoke, store_path, pack_dir, input_file
+):
+    """A number with no width in Python and sixty-four bits in the column that records it.
+
+    Left to SQLite it is an ``OverflowError`` raised from inside the write, which is in
+    none of the families this boundary turns into a refusal - so the command exited with
+    a stack trace on the stream it promises to leave empty and nothing on stdout. The
+    bound lives with the model's other store bounds; here is what a consumer sees.
+    """
+    from semantic_layer.trace.model import METRIC_VALUE_MAX
+
+    oversized = Metric("branches-read", METRIC_VALUE_MAX + 1, "count")
+    wide = replace(trace_runs.run(), metrics=[oversized])
+    answer = record(invoke, store_path, pack_dir, input_file, run=wide)
+    assert answer.status == 1
+    assert answer.error["kind"] == "trace"
     assert _recorded(store_path) == ()
 
 

@@ -284,6 +284,21 @@ def test_a_manifest_that_is_not_json_is_refused(committed):
         pack.verify(committed.content, b"{", as_of=_within(committed))
 
 
+def test_a_manifest_that_is_not_utf8_is_refused(committed):
+    """``json.loads`` takes bytes and picks the encoding itself, which is two problems.
+
+    Bytes that decode as nothing raise ``UnicodeDecodeError`` out of the json module,
+    which is a ``ValueError`` and not the ``PackError`` a consumer is told to catch. And
+    bytes that begin with a byte order mark are read as UTF-16, so a manifest could be
+    made to mean something other than what a reader looking at it would see. Both are
+    answered by decoding here: a manifest is UTF-8, or it is not a manifest.
+    """
+    with pytest.raises(pack.PackError, match="not UTF-8"):
+        pack.verify(committed.content, b"\xff\xfe{}", as_of=_within(committed))
+    with pytest.raises(pack.PackError, match="not UTF-8"):
+        pack.verify(committed.content, committed.manifest + b"\x80", as_of=_within(committed))
+
+
 def test_a_manifest_nested_past_the_parser_is_refused(committed):
     """Valid JSON the parser gives up on rather than rejects, which is a third thing.
 
