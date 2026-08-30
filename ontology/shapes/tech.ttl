@@ -195,9 +195,15 @@ shpt:ObservationShape
     # answer, so a window check written without the guard reports a coherent window as
     # expired - one rule failing for another rule's reason, and a reader told to fix
     # the wrong thing.
+    #
+    # The comparison is <= and both halves of it are defended by a fixture: one window
+    # that closed before the reading, and one that closed exactly at it. A fixture
+    # sitting a day past the boundary would leave the equality undefended, and <= could
+    # be loosened to < with the suite still green - which is the one thing the negative
+    # fixtures exist to prevent.
     sh:sparql [
         a sh:SPARQLConstraint ;
-        sh:message "Observation {$this} was observed at {?observedAt} and is fresh until {?freshUntil}, which is not later. An observation that expired before it was made is stale for every instant a consumer could compare it against, so nothing would ever read it and nothing would ever say why." ;
+        sh:message "Observation {$this} was observed at {?observedAt} and is fresh until {?freshUntil}, which is not later. An observation whose freshness ends no later than the reading it belongs to is stale at every instant a consumer could compare it against, so nothing would ever read it and nothing would ever say why." ;
         sh:prefixes <https://semantic-layer.19h09.co/shapes/tech> ;
         sh:select """
             SELECT $this ?observedAt ?freshUntil
