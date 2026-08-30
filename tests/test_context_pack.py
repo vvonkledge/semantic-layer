@@ -84,14 +84,41 @@ def test_a_pack_carries_the_observation_it_names_and_nothing_else(committed):
         ), f"{subject} is in the pack and belongs to no part of this observation"
 
 
-def test_a_pack_carries_no_business_fact(committed):
-    """L1 has no observation behind it and no freshness to state.
+def test_a_pack_asserts_nothing_about_a_business_entity(committed):
+    """It may point at L1. It may not state anything about it.
 
-    Putting the two in one artifact would hand a consumer declared business truth
-    stamped with an expiry date it has no way to honour.
+    The distinction is the crossing edge, and getting it wrong in either direction is
+    a real failure. Carrying the L1 entity itself would hand a consumer declared
+    business truth stamped with an expiry date it has no way to honour - L1 has no
+    observation behind it and no freshness to state. Dropping the pointer would throw
+    away the most valuable fact in the pack: which capability this system delivers.
     """
-    assert b"/vocab/biz#" not in committed.content
-    assert b"/biz/" not in committed.content
+    content = graph.load_text(committed.content.decode())
+    for subject, predicate, _ in content:
+        assert not str(subject).startswith("https://semantic-layer.19h09.co/biz/")
+        assert not str(subject).startswith("https://semantic-layer.19h09.co/fixture/biz/")
+        assert not str(predicate).startswith("https://semantic-layer.19h09.co/vocab/biz#")
+
+
+def test_a_pack_carries_the_crossing_edge_and_not_what_is_on_the_other_side():
+    """Built from the fixtures, which have a tech:realizes edge; the accepted graph
+    has none yet, so asserting this against it would prove nothing today and would
+    break on the day somebody authored one.
+    """
+    observation = URIRef(
+        "https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/"
+        "3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+    )
+    built = pack.build(graph.turtle_files(graph.TECHNICAL_VALID_FIXTURES_DIR), observation)
+    content = graph.load_text(built.content.decode())
+
+    capability = URIRef("https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing")
+    assert list(content.subjects(graph.TECH.realizes, capability)), (
+        "the pack dropped the crossing edge, which is the fact a consumer most wants"
+    )
+    assert not list(content.predicate_objects(capability)), (
+        "the pack carries the capability itself, which has no observation behind it"
+    )
 
 
 ## What a consumer must refuse.

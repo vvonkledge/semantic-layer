@@ -267,9 +267,15 @@ packs/github/vvonkledge-siana/
 ```
 
 The content is one observation and nothing else: the source, the reading, and the
-artifacts that reading saw. It carries no business fact, because L1 has no observation
-behind it and no freshness to state, and shipping the two together would stamp declared
-business truth with an expiry date.
+artifacts that reading saw.
+
+It **points at** L1 and asserts nothing **about** it. A `tech:realizes` edge is an L2
+statement about an L2 artifact, so it travels - and it is the fact a consumer most wants,
+because it says which capability the system they are looking at delivers. The capability
+on the other end does not, because L1 has no observation behind it and no freshness to
+state, and shipping it here would stamp declared business truth with an expiry date it
+has no way to honour. A consumer that needs the capability's own details asks L1, where
+they are true until the organization says otherwise.
 
 The manifest names the graph, the vocabulary version a consumer compiles against, the
 source, the target, the observation, `observed_at`, `fresh_until`, the trust basis, the
