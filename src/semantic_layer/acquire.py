@@ -316,4 +316,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # The refusal a reader acts on, and not a stack of this repository's frames on
+    # top of it. Every AcquisitionError raised under here already names what is wrong and
+    # what to do next; a traceback over that sentence tells somebody following the
+    # README that they hit a bug rather than a state they can fix.
+    try:
+        main()
+    except AcquisitionError as error:
+        raise SystemExit(f"error: {error}") from None

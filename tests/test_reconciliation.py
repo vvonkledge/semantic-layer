@@ -75,6 +75,18 @@ def test_a_capture_edited_after_it_was_hashed_is_refused(tmp_path):
         github.read_snapshot(path)
 
 
+def test_a_capture_that_is_not_there_is_refused_by_name(tmp_path):
+    """The first error a cold reader following the README from an empty tree can hit.
+
+    A missing capture is a state with an obvious next step, not a bug, so it is refused
+    the way every other acquisition failure is: a domain error that names the file and
+    the command to run. An OSError escaping here would be the one path in this change
+    that answers a reader with a stack trace.
+    """
+    with pytest.raises(github.ReconcileError, match="just capture"):
+        github.read_snapshot(tmp_path / "snapshot.json")
+
+
 def test_a_capture_with_no_committed_digest_is_refused(tmp_path):
     path = tmp_path / "snapshot.json"
     path.write_text("{}\n", encoding="utf-8")

@@ -493,6 +493,13 @@ def read_snapshot(path: Path) -> tuple[Mapping, str]:
     cannot carry its own hash. Checking it here is what makes the sidecar a promise
     rather than a note: a snapshot edited after capture no longer reconciles at all.
     """
+    if not path.exists():
+        raise ReconcileError(
+            f"{path} does not exist, so there is no observation to reconcile. Run "
+            f"`just capture` to read the source, then review the diff it writes. Nothing "
+            f"here invents an observation: a graph with no capture behind it is a claim "
+            f"about a system nobody looked at."
+        )
     payload = path.read_bytes()
     digest = digest_of(payload)
     sidecar = path.with_name(path.name + ".sha256")
@@ -551,4 +558,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # The refusal a reader acts on, and not a stack of this repository's frames on
+    # top of it. Every ReconcileError raised under here already names what is wrong and
+    # what to do next; a traceback over that sentence tells somebody following the
+    # README that they hit a bug rather than a state they can fix.
+    try:
+        main()
+    except ReconcileError as error:
+        raise SystemExit(f"error: {error}") from None
