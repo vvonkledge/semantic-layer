@@ -86,6 +86,10 @@ def _typed_entities(paths):
         (graph.TECHNICAL_DIR, False),
         (graph.TECHNICAL_VALID_FIXTURES_DIR, True),
         (graph.TECHNICAL_INVALID_FIXTURES_DIR, True),
+        # And so do the trace directories: the fixture proving a run cannot author a
+        # business fact is a business entity committed as evidence on purpose.
+        (graph.TRACE_VALID_FIXTURES_DIR, True),
+        (graph.TRACE_INVALID_FIXTURES_DIR, True),
     ],
     ids=[
         "business",
@@ -94,6 +98,8 @@ def _typed_entities(paths):
         "technical",
         "technical-valid-fixtures",
         "technical-invalid-fixtures",
+        "trace-valid-fixtures",
+        "trace-invalid-fixtures",
     ],
 )
 def test_every_committed_entity_carries_the_identifier_minting_would_give_it(directory, fixture):

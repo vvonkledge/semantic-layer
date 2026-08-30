@@ -1,0 +1,1 @@
+A trace entity was recorded as a blank node, with no identifier. Every L3 entity is machine-minted from the run it belongs to, so a blank node is a record nothing can cite, join to an APM, or find again after the spans behind it have expired. See docs/identifiers.md.

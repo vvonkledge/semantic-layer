@@ -200,8 +200,21 @@ def _typed_observed_entities(paths):
         (graph.TECHNICAL_VALID_FIXTURES_DIR, True),
         (graph.TECHNICAL_INVALID_FIXTURES_DIR, True),
         (graph.INVALID_FIXTURES_DIR, True),
+        # The trace directories are walked too. Nothing there declares an observed
+        # entity today - a trace names the observation its pack carried and types
+        # nothing - and that is the point: the day one does, it is minted like any
+        # other or this fails.
+        (graph.TRACE_VALID_FIXTURES_DIR, True),
+        (graph.TRACE_INVALID_FIXTURES_DIR, True),
     ],
-    ids=["accepted", "valid-fixtures", "invalid-fixtures", "l1-invalid-fixtures"],
+    ids=[
+        "accepted",
+        "valid-fixtures",
+        "invalid-fixtures",
+        "l1-invalid-fixtures",
+        "trace-valid-fixtures",
+        "trace-invalid-fixtures",
+    ],
 )
 def test_every_committed_observed_entity_carries_the_identifier_minting_would_give_it(
     directory, fixture

@@ -1,0 +1,306 @@
+# L3 execution-trace vocabulary: what a run did, what it was told, and what came of it.
+#
+# L3 is neither of the layers below it. L1 is true because the organization declared
+# it; L2 is true as of the last time somebody looked; L3 is true because it happened.
+# That is a different epistemic status, not a weaker one, and the whole of this
+# vocabulary follows from it:
+#
+#   - A trace is evidence and never truth. Nothing here may state a business or a
+#     technical fact, and ontology/shapes/trace.ttl refuses a graph that tries. A
+#     finding that GitHub's default branch has moved is a finding, not an observation.
+#   - A run that cannot say what it was told cannot be learned from, because a failure
+#     cannot be attributed between bad knowledge and bad reasoning. So trc:usedPack is
+#     mandatory and names the exact verified context pack, by the digests of both of
+#     its halves.
+#   - A trace records structure and never payload. There is no property here for a
+#     prompt, a completion, a tool argument, a tool result, an HTTP body, an
+#     environment or an opaque blob, and there is no free-form attribute one could
+#     arrive under instead. Adding a payload later is reversible; removing sensitive
+#     data from an append-only history is not. See docs/l3-execution-trace.md.
+#
+# PROV-O is reused rather than re-invented. A run and its spans are prov:Activity; the
+# pack it used and the rollups it produced are prov:Entity. No reasoner is ever run
+# here, so the projector materializes both types and both spellings of each edge -
+# see semantic_layer.trace.project - and a consumer that speaks only PROV can read a
+# summary without ever having been told about this vocabulary.
+#
+# Enforcement is SHACL, not a reasoner. rdfs:domain and rdfs:range below are
+# documentation for external consumers; no inference is ever run over this vocabulary.
+
+@prefix trc:  <https://semantic-layer.19h09.co/vocab/trace#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://semantic-layer.19h09.co/vocab/trace>
+    a owl:Ontology ;
+    rdfs:label "Semantic layer execution-trace vocabulary (L3)" ;
+    rdfs:comment "Recorded runtime evidence: what a run was told, what it did, and what came of it. Evidence, never truth." ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://semantic-layer.19h09.co/vocab/core> .
+
+## The activities: what happened.
+
+trc:Run
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Run" ;
+    rdfs:comment """One execution, from the moment it was given a context pack to the moment it
+produced an outcome. It is named by its OpenTelemetry trace id, so the evidence here and the trace
+in whatever tracing system the fleet already runs are the same run rather than two records of it.""" .
+
+trc:Span
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Span" ;
+    rdfs:comment """One timed operation inside a run, shaped like an OpenTelemetry span: an
+operation name, a kind, an interval, a status, and a parent. Span detail is the half of a trace
+that expires; everything a run is judged by afterwards is a rollup that does not.""" .
+
+## The entities: what was used, and what came of it.
+
+trc:ContextPack
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Context pack" ;
+    rdfs:comment """The exact pack a run was given, named by a digest over both of its halves. It
+is not a copy of the pack and not a path to one: it is the identity of bytes that were verified
+against a consumer instant before the run was recorded, which is what makes 'what did this run
+know' a question with one answer.""" .
+
+trc:Outcome
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Outcome" ;
+    rdfs:comment "How a run ended, as one of a closed set of states. One per run, and it outlives the span detail the run was made of." .
+
+trc:Metric
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Metric" ;
+    rdfs:comment "One named, typed measurement a run rolled up. Kept indefinitely, because a number is what a fleet is steered by long after the spans behind it have expired." .
+
+trc:Finding
+    a owl:Class ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Finding" ;
+    rdfs:comment """Something a run noticed, as a code and a severity, optionally about one L1 or
+L2 node. It is a report and not a correction: a finding never changes what it is about, and
+promotion of a finding into a proposal is a later phase.""" .
+
+## Run attributes.
+
+trc:traceId
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "trace id" ;
+    rdfs:comment "The OpenTelemetry trace id, as 32 lower-case hex characters. Carried as an attribute as well as in the identifier so a reader never has to decode an IRI to join this run to an APM." ;
+    rdfs:domain trc:Run ;
+    rdfs:range xsd:string .
+
+trc:usedPack
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:subPropertyOf prov:used ;
+    rdfs:label "used pack" ;
+    rdfs:comment """Read: this run was given that context pack, and nothing else. Exactly one, and
+it is the most important cardinality in the model: without it there is no record of what the agent
+was told, so a failure cannot be attributed between bad knowledge and bad reasoning and the
+evidence is unusable.""" ;
+    rdfs:domain trc:Run ;
+    rdfs:range trc:ContextPack .
+
+trc:hasOutcome
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "has outcome" ;
+    rdfs:comment "Read: this is how the run ended. Exactly one: a run with two outcomes has none a reader can act on, and a run with none was never finished." ;
+    rdfs:domain trc:Run ;
+    rdfs:range trc:Outcome .
+
+trc:spanDetailExpiredAt
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "span detail expired at" ;
+    rdfs:comment """The retention horizon that removed this run's span detail. It is written when
+retention runs rather than inferred from the absence of spans, so a summary says 'the detail
+expired' instead of leaving a reader to conclude 'the run recorded nothing'.""" ;
+    rdfs:domain trc:Run ;
+    rdfs:range xsd:dateTime .
+
+## Span attributes.
+
+trc:ofRun
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "of run" ;
+    rdfs:comment """Read: this record belongs to that run. One property for the spans, metrics and
+findings alike, because what each of them needs to say here is the same sentence; which PROV edge
+that becomes - prov:wasInformedBy for an activity, prov:wasGeneratedBy for an entity - is decided
+by the projector, which knows the class.""" ;
+    rdfs:range trc:Run .
+
+trc:spanId
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "span id" ;
+    rdfs:comment "The OpenTelemetry span id, as 16 lower-case hex characters, unique within its run." ;
+    rdfs:domain trc:Span ;
+    rdfs:range xsd:string .
+
+trc:parentSpan
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:subPropertyOf prov:wasInformedBy ;
+    rdfs:label "parent span" ;
+    rdfs:comment "Read: this span happened inside that one. Absent on the run's root span, and never pointing outside its own run." ;
+    rdfs:domain trc:Span ;
+    rdfs:range trc:Span .
+
+trc:operation
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "operation" ;
+    rdfs:comment """What the span was doing, as a short slug from the writer's own vocabulary:
+'verify-pack', 'reconcile'. It is deliberately not free text. An operation name is the one field on
+a span a payload could plausibly arrive in, so it is narrowed to a shape a prompt cannot be written
+in rather than trusted to be short.""" ;
+    rdfs:domain trc:Span ;
+    rdfs:range xsd:string .
+
+trc:spanKind
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "span kind" ;
+    rdfs:comment "The OpenTelemetry span kind: 'internal', 'server', 'client', 'producer' or 'consumer'." ;
+    rdfs:domain trc:Span ;
+    rdfs:range xsd:string .
+
+trc:spanStatus
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "span status" ;
+    rdfs:comment """The OpenTelemetry span status: 'unset', 'ok' or 'error'. There is no
+accompanying status message, because a message is where the exception text, and with it the
+payload, would arrive.""" ;
+    rdfs:domain trc:Span ;
+    rdfs:range xsd:string .
+
+trc:touched
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "touched" ;
+    rdfs:comment """Read: this span acted on that L1 or L2 node. The reference is bounded by being
+an identifier this layer mints: a value that does not parse as one is refused, so the edge cannot
+become a place to write a URL, a path or a sentence.""" ;
+    rdfs:domain trc:Span .
+
+## Context pack attributes.
+
+trc:contentDigest
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "content digest" ;
+    rdfs:comment "The SHA-256 of the pack content the run was given, as 'sha256:<hex>', taken from the bytes that were verified rather than from what the manifest claimed about them." ;
+    rdfs:domain trc:ContextPack ;
+    rdfs:range xsd:string .
+
+trc:manifestDigest
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "manifest digest" ;
+    rdfs:comment """The SHA-256 of the pack manifest, as 'sha256:<hex>'. Both halves are recorded
+because a pack is two files: the manifest is what a consumer reads without parsing the content, and
+a binding that named only the content could not tell two packs apart by what they claimed.""" ;
+    rdfs:domain trc:ContextPack ;
+    rdfs:range xsd:string .
+
+trc:packObservation
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "pack observation" ;
+    rdfs:comment "Read: the pack this run used carried that L2 observation. Naming it is not asserting it: L3 points at observed truth and never states any." ;
+    rdfs:domain trc:ContextPack .
+
+trc:packSource
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "pack source" ;
+    rdfs:comment "Read: the observation in that pack was read from that source. Recorded because an identifier means nothing outside the source that issued it." ;
+    rdfs:domain trc:ContextPack .
+
+trc:packTarget
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "pack target" ;
+    rdfs:comment "What the pack's observation was about, in the source's own terms: 'vvonkledge/siana'. Copied from the verified manifest, never from the caller." ;
+    rdfs:domain trc:ContextPack ;
+    rdfs:range xsd:string .
+
+## Outcome, metric and finding attributes.
+
+trc:outcomeStatus
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "outcome status" ;
+    rdfs:comment "How the run ended: 'succeeded', 'failed' or 'blocked'. A closed set, so counting outcomes across a fleet is arithmetic rather than string matching." ;
+    rdfs:domain trc:Outcome ;
+    rdfs:range xsd:string .
+
+trc:metricName
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "metric name" ;
+    rdfs:comment "What was measured, as a slug, unique within its run." ;
+    rdfs:domain trc:Metric ;
+    rdfs:range xsd:string .
+
+trc:metricValue
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "metric value" ;
+    rdfs:comment """The measurement, as a whole number. Integers only, so the same measurement
+serializes to the same bytes on every machine and two summaries of one run can be compared by
+hashing them.""" ;
+    rdfs:domain trc:Metric ;
+    rdfs:range xsd:integer .
+
+trc:metricUnit
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "metric unit" ;
+    rdfs:comment "What the value counts: 'count', 'millisecond' or 'byte'. A number whose unit is implied is a number somebody will read in the wrong one." ;
+    rdfs:domain trc:Metric ;
+    rdfs:range xsd:string .
+
+trc:findingCode
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "finding code" ;
+    rdfs:comment """What was found, as a slug from the writer's own closed vocabulary:
+'stale-pack', 'branch-moved'. There is no accompanying description, because a description is where
+the tool output would arrive; what a code means belongs in the writer that mints it.""" ;
+    rdfs:domain trc:Finding ;
+    rdfs:range xsd:string .
+
+trc:findingSeverity
+    a owl:DatatypeProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "finding severity" ;
+    rdfs:comment "How much the finding matters: 'info', 'warning' or 'error'. A closed set, so a fleet can be filtered by it." ;
+    rdfs:domain trc:Finding ;
+    rdfs:range xsd:string .
+
+trc:findingAbout
+    a owl:ObjectProperty ;
+    rdfs:isDefinedBy <https://semantic-layer.19h09.co/vocab/trace> ;
+    rdfs:label "finding about" ;
+    rdfs:comment "Read: this finding is about that L1 or L2 node. Bounded the same way trc:touched is, and asserting nothing about what it points at." ;
+    rdfs:domain trc:Finding .

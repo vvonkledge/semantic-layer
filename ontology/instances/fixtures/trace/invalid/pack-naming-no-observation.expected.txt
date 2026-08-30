@@ -1,0 +1,1 @@
+Context pack https://semantic-layer.19h09.co/fixture/l3/pack/1a7f9c0e8b6d4f2a3c5e7d9b1f3a5c7e9d1b3f5a7c9e1d3b5f7a9c1e3d5b7f9a names no observation with trc:packObservation. The observation is what joins this run to the L2 reading it acted on, so a binding without one records that a pack existed and nothing about what was in it.

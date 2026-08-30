@@ -7,3 +7,8 @@ __pycache__/
 # A capture writes through a temporary file in the target directory and moves it into
 # place atomically. One is only left behind if the process was killed outright.
 *.partial
+
+# A trace store is a local file that recorded runs are written into. It is evidence
+# about one machine, it is append-only, and it is never committed: the graph gets a
+# bounded PROV summary and git gets nothing. See docs/l3-execution-trace.md.
+*.sqlite3

@@ -1,0 +1,15 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH, AND NOT A RUN THAT HAPPENED.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix trc:  <https://semantic-layer.19h09.co/vocab/trace#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# A business goal declared by a run. A trace may point at anything and may author
+# nothing: a run that writes the facts it is judged against is judging itself.
+
+<https://semantic-layer.19h09.co/fixture/biz/goal/faster-recovery>
+    a biz:Goal .

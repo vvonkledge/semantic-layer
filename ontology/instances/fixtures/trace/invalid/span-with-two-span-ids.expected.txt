@@ -1,0 +1,1 @@
+Span https://semantic-layer.19h09.co/fixture/l3/span/4bf92f3577b34da6a3ce929d0e0e4736/00f067aa0ba902b7 carries more than one trc:spanId. Only one of them can be the id the identifier was minted from, and nothing here says which.

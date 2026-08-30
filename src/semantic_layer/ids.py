@@ -248,3 +248,105 @@ def parse_observed(iri: str) -> ObservedIdentifier:
     return ObservedIdentifier(
         provider=provider, instance=instance, kind=kind, local_id=local_id, fixture=fixture
     )
+
+
+## L3: recorded execution evidence.
+#
+# An L2 identifier is scoped by the source that issued the id inside it, because the
+# thing being named already had a name somewhere else. Nothing about L3 works that
+# way: a run happened here, and this layer is the only system that ever names it. So
+# an L3 identifier is scoped by nothing but the layer, and every local id in one is
+# machine-minted rather than authored or imported:
+#
+#     run       https://semantic-layer.19h09.co/l3/run/<trace id>
+#     span      https://semantic-layer.19h09.co/l3/span/<trace id>/<span id>
+#     pack      https://semantic-layer.19h09.co/l3/pack/<binding digest>
+#     outcome   https://semantic-layer.19h09.co/l3/outcome/<trace id>
+#     metric    https://semantic-layer.19h09.co/l3/metric/<trace id>/<name>
+#     finding   https://semantic-layer.19h09.co/l3/finding/<trace id>/<ordinal>
+#
+# The trace id and the span id are the OpenTelemetry ones, carried verbatim so the
+# evidence joins to whatever tracing the fleet already runs rather than becoming a
+# second, divergent record of the same run. They are also what makes an L3 identifier
+# reproducible: recording the same run twice mints the same IRIs, which is what lets a
+# replay be recognized as a replay instead of written down as a second run.
+#
+# The pack is named by a digest over both halves of the pack that was verified, so two
+# runs that used the same bytes name one entity and a run that used different bytes
+# can never appear to have used the same ones.
+
+#: Recorded execution evidence, written by the trace writer.
+TRACE_SEGMENT = "l3/"
+
+#: L3 test data. No recorded run ever uses this segment.
+FIXTURE_TRACE_SEGMENT = "fixture/l3/"
+
+#: The L3 entity kinds, one per concrete trace class, mapped to their class IRI.
+TRACE_KIND_BY_CLASS = {
+    "https://semantic-layer.19h09.co/vocab/trace#Run": "run",
+    "https://semantic-layer.19h09.co/vocab/trace#Span": "span",
+    "https://semantic-layer.19h09.co/vocab/trace#ContextPack": "pack",
+    "https://semantic-layer.19h09.co/vocab/trace#Outcome": "outcome",
+    "https://semantic-layer.19h09.co/vocab/trace#Metric": "metric",
+    "https://semantic-layer.19h09.co/vocab/trace#Finding": "finding",
+}
+
+#: How many local-id segments each kind carries. One for anything named by the run it
+#: belongs to or by its own content; two for the kinds a run holds more than one of,
+#: which are named by the run and then by what tells them apart within it.
+TRACE_KIND_ARITY = {
+    "run": 1,
+    "span": 2,
+    "pack": 1,
+    "outcome": 1,
+    "metric": 2,
+    "finding": 2,
+}
+
+TRACE_KINDS = frozenset(TRACE_KIND_ARITY)
+
+
+class TraceIdentifier(NamedTuple):
+    kind: str
+    local_id: tuple[str, ...]
+    fixture: bool
+
+
+def _trace_segment(fixture: bool) -> str:
+    return FIXTURE_TRACE_SEGMENT if fixture else TRACE_SEGMENT
+
+
+def mint_trace(kind: str, *local_id: str, fixture: bool = False) -> str:
+    """Return the IRI of a recorded trace entity of ``kind``."""
+    if kind not in TRACE_KINDS:
+        raise IdentifierError(
+            f"unknown trace entity kind {kind!r}; expected one of {sorted(TRACE_KINDS)}"
+        )
+    arity = TRACE_KIND_ARITY[kind]
+    if len(local_id) != arity:
+        raise IdentifierError(
+            f"a {kind} identifier takes {arity} local-id segment(s), given {len(local_id)}"
+        )
+    encoded = "/".join(_encode(segment, kind) for segment in local_id)
+    return f"{BASE}{_trace_segment(fixture)}{kind}/{encoded}"
+
+
+def parse_trace(iri: str) -> TraceIdentifier:
+    """Take a trace IRI apart, rejecting anything ``mint_trace`` would not produce."""
+    if not iri.startswith(BASE):
+        raise IdentifierError(f"{iri!r} is not under the semantic layer base {BASE!r}")
+    rest = iri[len(BASE) :]
+    fixture = rest.startswith(FIXTURE_TRACE_SEGMENT)
+    segment = _trace_segment(fixture)
+    if not rest.startswith(segment):
+        raise IdentifierError(f"{iri!r} names no trace content segment")
+    parts = rest[len(segment) :].split("/")
+    if len(parts) < 2:
+        raise IdentifierError(f"{iri!r} is not of the form <base><segment><kind>/<local id>")
+    kind, *encoded = parts
+    if kind not in TRACE_KINDS:
+        raise IdentifierError(f"{iri!r} names the unknown trace entity kind {kind!r}")
+    local_id = tuple(unquote(segment) for segment in encoded)
+    if mint_trace(kind, *local_id, fixture=fixture) != iri:
+        raise IdentifierError(f"{iri!r} is not the identifier minting would produce")
+    return TraceIdentifier(kind=kind, local_id=local_id, fixture=fixture)

@@ -1,0 +1,1 @@
+Span https://semantic-layer.19h09.co/fixture/l3/span/4bf92f3577b34da6a3ce929d0e0e4736/00f067aa0ba902b7 names https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736 as its parent, which is not a Span. A span hangs off the span it happened inside, not off the run itself - trc:ofRun already says which run it belongs to.

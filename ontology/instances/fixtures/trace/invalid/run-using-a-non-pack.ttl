@@ -1,0 +1,24 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH, AND NOT A RUN THAT HAPPENED.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix trc:  <https://semantic-layer.19h09.co/vocab/trace#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# A run bound to its own outcome instead of to the bytes it was handed.
+
+<https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736>
+    a trc:Run , prov:Activity ;
+    trc:traceId "4bf92f3577b34da6a3ce929d0e0e4736" ;
+    trc:usedPack <https://semantic-layer.19h09.co/fixture/l3/outcome/4bf92f3577b34da6a3ce929d0e0e4736> ;
+    trc:hasOutcome <https://semantic-layer.19h09.co/fixture/l3/outcome/4bf92f3577b34da6a3ce929d0e0e4736> ;
+    prov:startedAtTime "2026-08-30T09:00:00Z"^^xsd:dateTime ;
+    prov:endedAtTime "2026-08-30T09:00:12Z"^^xsd:dateTime .
+
+<https://semantic-layer.19h09.co/fixture/l3/outcome/4bf92f3577b34da6a3ce929d0e0e4736>
+    a trc:Outcome , prov:Entity ;
+    trc:outcomeStatus "succeeded" ;
+    prov:wasGeneratedBy <https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736> .

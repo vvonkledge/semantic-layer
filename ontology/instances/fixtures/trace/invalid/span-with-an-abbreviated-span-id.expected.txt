@@ -1,0 +1,1 @@
+Span https://semantic-layer.19h09.co/fixture/l3/span/4bf92f3577b34da6a3ce929d0e0e4736/00f067aa0ba902b7 carries the span id 00f067aa, which is not 16 lower-case hex characters. An abbreviated or re-cased span id does not compare equal to the one the tracer emitted, so the parent it names cannot be resolved.

@@ -1,0 +1,1 @@
+Run https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736 names no outcome with trc:hasOutcome. How a run ended is the one thing about it that is kept indefinitely, so a run without one records that something happened and nothing about what came of it.

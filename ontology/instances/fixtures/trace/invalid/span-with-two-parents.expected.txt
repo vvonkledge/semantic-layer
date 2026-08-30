@@ -1,0 +1,1 @@
+Span https://semantic-layer.19h09.co/fixture/l3/span/4bf92f3577b34da6a3ce929d0e0e4736/b7ad6b7169203331 names more than one parent with trc:parentSpan. A span happened inside one other span; two parents is two trees claiming the same operation.

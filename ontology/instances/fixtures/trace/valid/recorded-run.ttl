@@ -1,0 +1,104 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH, AND NOT A RUN THAT HAPPENED.
+#
+# One complete trace summary, invented to exercise the L3 vocabulary and the L3 shapes.
+# It is shaped exactly like what semantic_layer.trace.project writes for a real run:
+# the run and its spans as PROV activities, the pack it used and the rollups it left
+# behind as PROV entities, and both spellings of every edge - the trace vocabulary's
+# and PROV-O's - because no reasoner is ever run here and a consumer that speaks only
+# PROV has to be able to read this without being told about trc:.
+#
+# Fixtures are minted under .../fixture/l3/, which no recorded run ever uses, so a
+# fixture can never be mistaken for evidence about something that actually ran. The
+# pack, observation and agent it names are the fixture ones committed elsewhere: naming
+# them is what a trace is for, and asserting anything about them is what it may never
+# do.
+
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix trc:  <https://semantic-layer.19h09.co/vocab/trace#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+@prefix run:     <https://semantic-layer.19h09.co/fixture/l3/run/> .
+@prefix span:    <https://semantic-layer.19h09.co/fixture/l3/span/4bf92f3577b34da6a3ce929d0e0e4736/> .
+@prefix outcome: <https://semantic-layer.19h09.co/fixture/l3/outcome/> .
+@prefix metric:  <https://semantic-layer.19h09.co/fixture/l3/metric/4bf92f3577b34da6a3ce929d0e0e4736/> .
+@prefix finding: <https://semantic-layer.19h09.co/fixture/l3/finding/4bf92f3577b34da6a3ce929d0e0e4736/> .
+@prefix pack:    <https://semantic-layer.19h09.co/fixture/l3/pack/> .
+
+## The run: one execution, named by the trace id the tracer emitted.
+
+run:4bf92f3577b34da6a3ce929d0e0e4736
+    a trc:Run , prov:Activity ;
+    rdfs:label "run 4bf92f3577b34da6a3ce929d0e0e4736" ;
+    trc:traceId "4bf92f3577b34da6a3ce929d0e0e4736" ;
+    trc:usedPack pack:1a7f9c0e8b6d4f2a3c5e7d9b1f3a5c7e9d1b3f5a7c9e1d3b5f7a9c1e3d5b7f9a ;
+    prov:used pack:1a7f9c0e8b6d4f2a3c5e7d9b1f3a5c7e9d1b3f5a7c9e1d3b5f7a9c1e3d5b7f9a ;
+    trc:hasOutcome outcome:4bf92f3577b34da6a3ce929d0e0e4736 ;
+    prov:wasAssociatedWith <https://semantic-layer.19h09.co/fixture/biz/agent/remediator> ;
+    prov:startedAtTime "2026-08-30T09:00:00Z"^^xsd:dateTime ;
+    prov:endedAtTime "2026-08-30T09:00:12Z"^^xsd:dateTime .
+
+## What it was told: the exact bytes, by the digest of each half.
+
+pack:1a7f9c0e8b6d4f2a3c5e7d9b1f3a5c7e9d1b3f5a7c9e1d3b5f7a9c1e3d5b7f9a
+    a trc:ContextPack , prov:Entity ;
+    rdfs:label "context pack 1a7f9c0e8b6d4f2a" ;
+    trc:contentDigest "sha256:0f4b3ac8ff35b1e08c8a2d7d1e0f4b0f43e2a11c0f4b3ac8ff35b1e08c8a2d7d" ;
+    trc:manifestDigest "sha256:558d5f95a97775de2d786eee7ac1f4eb24c2f80f558d5f95a97775de2d786eee" ;
+    trc:packObservation <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed> ;
+    trc:packSource <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com> ;
+    trc:packTarget "vvonkledge/siana" .
+
+## What it did: two spans, the second inside the first.
+
+span:00f067aa0ba902b7
+    a trc:Span , prov:Activity ;
+    rdfs:label "verify-pack" ;
+    trc:spanId "00f067aa0ba902b7" ;
+    trc:ofRun run:4bf92f3577b34da6a3ce929d0e0e4736 ;
+    prov:wasInformedBy run:4bf92f3577b34da6a3ce929d0e0e4736 ;
+    trc:operation "verify-pack" ;
+    trc:spanKind "internal" ;
+    trc:spanStatus "ok" ;
+    prov:startedAtTime "2026-08-30T09:00:00Z"^^xsd:dateTime ;
+    prov:endedAtTime "2026-08-30T09:00:02Z"^^xsd:dateTime .
+
+span:a2fb4a1d1a96d312
+    a trc:Span , prov:Activity ;
+    rdfs:label "read-branches" ;
+    trc:spanId "a2fb4a1d1a96d312" ;
+    trc:ofRun run:4bf92f3577b34da6a3ce929d0e0e4736 ;
+    prov:wasInformedBy run:4bf92f3577b34da6a3ce929d0e0e4736 ;
+    trc:parentSpan span:00f067aa0ba902b7 ;
+    trc:operation "read-branches" ;
+    trc:spanKind "client" ;
+    trc:spanStatus "ok" ;
+    trc:touched <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349> ;
+    prov:startedAtTime "2026-08-30T09:00:02Z"^^xsd:dateTime ;
+    prov:endedAtTime "2026-08-30T09:00:11Z"^^xsd:dateTime .
+
+## What came of it: the rollups, which outlive the spans above.
+
+outcome:4bf92f3577b34da6a3ce929d0e0e4736
+    a trc:Outcome , prov:Entity ;
+    rdfs:label "succeeded" ;
+    trc:outcomeStatus "succeeded" ;
+    prov:wasGeneratedBy run:4bf92f3577b34da6a3ce929d0e0e4736 .
+
+metric:branches-read
+    a trc:Metric , prov:Entity ;
+    rdfs:label "branches-read" ;
+    trc:ofRun run:4bf92f3577b34da6a3ce929d0e0e4736 ;
+    prov:wasGeneratedBy run:4bf92f3577b34da6a3ce929d0e0e4736 ;
+    trc:metricName "branches-read" ;
+    trc:metricValue 2 ;
+    trc:metricUnit "count" .
+
+finding:1
+    a trc:Finding , prov:Entity ;
+    rdfs:label "branch-moved" ;
+    trc:ofRun run:4bf92f3577b34da6a3ce929d0e0e4736 ;
+    prov:wasGeneratedBy run:4bf92f3577b34da6a3ce929d0e0e4736 ;
+    trc:findingCode "branch-moved" ;
+    trc:findingSeverity "warning" ;
+    trc:findingAbout <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main> .
