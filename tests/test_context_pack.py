@@ -164,35 +164,95 @@ def test_tampered_content_is_refused(committed):
         pack.verify(tampered, committed.manifest, as_of=_within(committed))
 
 
-def test_a_manifest_that_disagrees_with_its_content_is_refused(committed):
-    """Every field a consumer reads without parsing the graph is held against the graph.
+#: One forgery per manifest field: a value a consumer would act on differently, and
+#: what refusing it must say. A field is listed here or the audit below fails, so a
+#: field added to the manifest cannot reach a consumer with nothing holding it.
+FORGERIES = [
+    ("pack_version", 2, "another layout"),
+    ("graph", "https://semantic-layer.19h09.co/graph/curated", "this reader is built for"),
+    ("vocabulary_version", "0.0.1-forged", "this reader is built for"),
+    ("content_media_type", "text/turtle", "this reader is built for"),
+    ("source", "https://semantic-layer.19h09.co/l2/gitlab/gitlab-com", "the content says"),
+    ("provider", "gitlab", "the content says"),
+    ("api_root", "https://api.internal.example.com", "the content says"),
+    (
+        "trust_basis",
+        "Authenticated read with organization admin scope; branch protection verified.",
+        "the content says",
+    ),
+    ("target", "vvonkledge/semantic-layer", "the content says"),
+    ("observed_at", "2026-08-30T23:59:59Z", "the content says"),
+    ("fresh_until", "2027-01-01T00:00:00Z", "the content says"),
+    ("snapshot_digest", "sha256:" + "0" * 64, "the content says"),
+    (
+        "observation",
+        "https://semantic-layer.19h09.co/l2/github/api-github-com/observation/" + "0" * 64,
+        "does not contain it",
+    ),
+    ("content_digest", "sha256:" + "0" * 64, "do not belong to each other"),
+    ("content_bytes", 1, "the manifest claims"),
+    ("artifact_count", 99, "the content holds"),
+]
 
-    A manifest is read first and believed, so one that has been edited to say the
-    observation is newer than it is would be believed too.
+
+def test_every_manifest_field_is_one_this_suite_forges():
+    """The code and this file enumerate the same fields, or one of them is lying.
+
+    ``verify`` refuses a manifest whose fields are not exactly ``MANIFEST_FIELDS``, and
+    every field in that set has a forgery below. Adding a manifest key therefore fails
+    here first, rather than shipping a field a consumer reads and nothing holds.
     """
-    for key, value in (
-        ("observed_at", "2026-08-30T23:59:59Z"),
-        ("fresh_until", "2027-01-01T00:00:00Z"),
-        ("target", "vvonkledge/semantic-layer"),
-        ("snapshot_digest", "sha256:" + "0" * 64),
-        ("source", "https://semantic-layer.19h09.co/l2/gitlab/gitlab-com"),
-    ):
-        with pytest.raises(pack.PackError, match="says"):
-            pack.verify(
-                committed.content,
-                amended(committed, **{key: value}).manifest,
-                as_of=_within(committed),
-            )
+    built = json.loads(pack.build(pack.accepted(), pack.accepted_observation()).manifest)
+    assert set(built) == pack.MANIFEST_FIELDS
+    assert {field for field, _, _ in FORGERIES} == pack.MANIFEST_FIELDS
 
 
-def test_a_manifest_naming_an_observation_the_content_lacks_is_refused(committed):
-    amended_pack = amended(
-        committed,
-        observation="https://semantic-layer.19h09.co/l2/github/api-github-com/observation/"
-        + "0" * 64,
-    )
-    with pytest.raises(pack.PackError, match="does not contain it"):
-        pack.verify(committed.content, amended_pack.manifest, as_of=_within(committed))
+@pytest.mark.parametrize(
+    ("field", "value", "message"), FORGERIES, ids=[field for field, _, _ in FORGERIES]
+)
+def test_every_manifest_field_is_held_against_content_or_a_trusted_constant(
+    committed, field, value, message
+):
+    """Each field forged on its own, with the content left exactly as it was.
+
+    A manifest is read first and believed, so a field that survives being rewritten is
+    a field a consumer can be handed a lie in - and the one that matters most is
+    ``trust_basis``, which is the field this repository tells a consumer to weigh
+    before acting. Source and target are pinned to the honest values, so an expectation
+    the consumer supplied cannot be what does the refusing here.
+    """
+    honest = json.loads(committed.manifest)
+    assert honest[field] != value, f"{field} is forged to the value it already had"
+    with pytest.raises(pack.PackError, match=message):
+        pack.verify(
+            committed.content,
+            amended(committed, **{field: value}).manifest,
+            as_of=honest["observed_at"],
+            expect_source=honest["source"],
+            expect_target=honest["target"],
+        )
+
+
+def test_a_manifest_carrying_a_field_nothing_holds_is_refused(committed):
+    """Refused rather than partly checked.
+
+    Ignoring an unknown field is how a manifest grows a claim no verification looks at:
+    the producer writes it, the consumer reads it, and the check in between passes
+    because it never heard of it.
+    """
+    with pytest.raises(pack.PackError, match="no rule for"):
+        pack.verify(
+            committed.content,
+            amended(committed, invented_field="believe me").manifest,
+            as_of=_within(committed),
+        )
+
+
+def test_a_manifest_missing_a_field_is_refused(committed):
+    manifest = json.loads(committed.manifest)
+    del manifest["trust_basis"]
+    with pytest.raises(pack.PackError, match="lacks \\['trust_basis'\\]"):
+        pack.verify(committed.content, pack.render(manifest), as_of=_within(committed))
 
 
 def test_a_pack_from_another_source_is_refused(committed):
@@ -218,13 +278,6 @@ def test_a_pack_about_another_target_is_refused(committed):
             committed.manifest,
             as_of=_within(committed),
             expect_target="vvonkledge/semantic-layer",
-        )
-
-
-def test_a_pack_written_in_another_layout_is_refused(committed):
-    with pytest.raises(pack.PackError, match="another layout"):
-        pack.verify(
-            committed.content, amended(committed, pack_version=2).manifest, as_of=_within(committed)
         )
 
 

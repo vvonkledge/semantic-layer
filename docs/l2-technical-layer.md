@@ -278,8 +278,29 @@ has no way to honour. A consumer that needs the capability's own details asks L1
 they are true until the organization says otherwise.
 
 The manifest names the graph, the vocabulary version a consumer compiles against, the
-source, the target, the observation, `observed_at`, `fresh_until`, the trust basis, the
-digest of the capture it came from, and the digest of the content itself.
+source and what backs it - the provider, the API root, and the trust basis - the target,
+the observation, `observed_at`, `fresh_until`, the digest of the capture it came from,
+the digest and size of the content itself, how many artifacts it holds, and how it is
+encoded.
+
+Every one of those is checked, and a manifest carrying a field this reader has no rule
+for is refused rather than partly checked. There are three kinds of rule and each field
+has exactly one. Most are **read back off the content**: the source, the target, both
+instants, the snapshot digest, the provider, the API root and the trust basis are each
+compared against the triple that states them, on the node that states it. Four are
+**recomputed from the content**: the observation it names, what the content hashes to,
+how long it is, and how many artifacts it holds. The remaining four - the pack layout,
+the named graph, the vocabulary version and the content media type - state nothing about
+GitHub and nothing in the content could restate them, so they are held against the
+constants this reader itself is built for, and a pack declaring another is about a
+layer, a vocabulary or an encoding this code does not speak.
+
+That list is not maintained by hand on either side. `pack.build` writes the manifest from
+the same enumeration `pack.verify` reads it back with, and the suite asserts that the
+fields built, the fields verified and the fields it forges one by one are the same set -
+so a field added to the manifest fails the build rather than reaching a consumer with
+nothing holding it. `trust_basis` is why that matters: it is the field this page tells a
+consumer to weigh before acting, and a manifest is read *instead of* the graph.
 
 `pack.verify` is the half that matters, and a consumer runs it:
 
@@ -297,7 +318,8 @@ pack.verify(
 ```
 
 It refuses a pack that is **tampered with** (the content does not hash to what the
-manifest claims), **inconsistent** (the manifest says something the graph does not),
+manifest claims), **inconsistent** (any field of the manifest says something the content
+or this reader's own constants do not),
 **stale** (your instant is not before `fresh_until`), **from another source** (an
 identifier means nothing outside the source that issued it, so the same number elsewhere
 is a different thing), **about another target**, or **written in a layout this reader

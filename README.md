@@ -127,7 +127,9 @@ to be the other layer.
    have one.
 9. A context pack that is stale, tampered with, internally inconsistent, from another
    source or about another target is refused, against an instant the caller supplies
-   rather than the clock.
+   rather than the clock. Every field the manifest carries is held - against the content,
+   against a recount of it, or against a constant this reader is built for - and a
+   manifest carrying a field nothing holds is refused rather than partly checked.
 
 The whole suite is deterministic and runs in a few seconds.
 
