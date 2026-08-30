@@ -415,6 +415,49 @@ def test_a_manifest_that_is_not_json_is_refused(invoke, pack_dir):
     _refuse_pack(invoke, pack_dir)
 
 
+@pytest.mark.parametrize("command", ["verify", "export"])
+def test_a_manifest_nested_past_the_parser_is_refused_as_a_document(invoke, pack_dir, command):
+    """A traceback is not a document, and this is the way one got out.
+
+    Deeply nested JSON is valid JSON that the parser gives up on rather than rejects, so
+    it raised a `RecursionError` - which is neither a `PackError` nor anything the
+    boundary catches. The command exited with a stack trace on the stream it promises to
+    leave empty and nothing at all on stdout, so a consumer parsing the answer could not
+    tell a refusal from a crash. `invoke` holds both promises for every case in this
+    file, which is what makes this a one-line assertion.
+    """
+    (pack_dir / packs.MANIFEST_NAME).write_bytes(_nested())
+    answer = invoke("pack", command, "--directory", str(pack_dir), "--as-of", AS_OF)
+    assert answer.status == 1
+    assert answer.error["kind"] == "pack"
+
+
+def test_a_run_nested_past_the_parser_is_refused_as_a_document(
+    invoke, store_path, pack_dir, input_file
+):
+    answer = invoke(
+        "trace",
+        "record",
+        "--store",
+        str(store_path),
+        "--pack",
+        str(pack_dir),
+        "--as-of",
+        AS_OF,
+        "--input",
+        input_file(_nested()),
+    )
+    assert answer.status == 2
+    assert answer.error["kind"] == "input"
+    assert _recorded(store_path) == ()
+
+
+def _nested() -> bytes:
+    """A document deep enough that the JSON parser gives up on it."""
+    depth = sys.getrecursionlimit() * 20
+    return ("[" * depth + "]" * depth).encode("utf-8")
+
+
 def test_a_manifest_carrying_a_field_nothing_holds_is_refused(invoke, pack_dir):
     manifest = json.loads((pack_dir / packs.MANIFEST_NAME).read_bytes())
     manifest["trust_me"] = "yes"

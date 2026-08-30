@@ -363,12 +363,13 @@ does not understand**. Each refusal is a test in `tests/test_context_pack.py`.
 
 That `except` is the whole of a consumer's error path, and it is meant to be. A pack is
 two files somebody else wrote, so it can be malformed as easily as it can be dishonest -
-a manifest field holding a number where text belongs, content that is not parseable
-N-Triples, an `as_of` that is not a UTC instant. Every one of those is refused as a
-`PackError` naming the field or the half at fault, before any of it reaches an RDF term
-or a parser. A refusal escaping as somebody's library exception would be caught by
-nothing a consumer was told to write, so the suite drives every manifest field against
-every shape its rule cannot read and asserts the type and the sentence.
+a manifest field holding a number where text belongs, a manifest nested deeper than the
+JSON parser will go, content that is not parseable N-Triples, an `as_of` that is not a
+UTC instant. Every one of those is refused as a `PackError` naming the field or the half
+at fault, before any of it reaches an RDF term or a parser. A refusal escaping as
+somebody's library exception would be caught by nothing a consumer was told to write, so
+the suite drives every manifest field against every shape its rule cannot read and
+asserts the type and the sentence.
 
 `as_of` is supplied rather than read from the clock for the same reason the competency
 question supplies its own: a check against "now" answers a different question every time

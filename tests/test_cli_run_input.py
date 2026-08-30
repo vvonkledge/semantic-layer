@@ -15,6 +15,7 @@ was in it.
 
 import json
 import math
+import sys
 from dataclasses import asdict
 
 import pytest
@@ -149,6 +150,20 @@ def test_a_key_written_twice_deep_inside_is_refused():
     text = json.dumps(document())
     doubled = text.replace('"unit": "count"', '"unit": "count", "unit": "byte"', 1)
     refusal(doubled.encode("utf-8"))
+
+
+def test_a_document_nested_past_the_parser_is_refused():
+    """Valid JSON the parser gives up on rather than rejects, which is a third thing.
+
+    A `RecursionError` is neither a `JSONDecodeError` nor anything this boundary catches,
+    so before this it left the command as a traceback on the stream that is promised to
+    stay empty, with nothing at all on stdout. A run is a handful of levels deep, so
+    nothing that exhausts a parser is one.
+    """
+    depth = sys.getrecursionlimit() * 20
+    nested = f'{{"schema": "{run_input.SCHEMA}", "version": 1, "run": '
+    nested += "[" * depth + "]" * depth + "}"
+    assert "nested deeper" in refusal(nested.encode("utf-8"))
 
 
 @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])

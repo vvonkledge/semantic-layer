@@ -292,6 +292,16 @@ def verify(
         stated = json.loads(manifest)
     except json.JSONDecodeError as error:
         raise PackError(f"the manifest is not valid JSON: {error}") from error
+    except RecursionError as error:
+        # Nested deeply enough, a manifest is valid JSON that the parser gives up on
+        # rather than rejects, and a RecursionError is neither a PackError nor anything
+        # a consumer was told to catch. A manifest is a flat object of named fields, so
+        # nothing that reaches Python's recursion limit is one.
+        raise PackError(
+            f"the manifest is nested deeper than this reader parses: {error}. A manifest "
+            f"is a flat object of named fields, and a document deep enough to exhaust a "
+            f"parser is not one."
+        ) from error
     if not isinstance(stated, dict):
         raise PackError("the manifest is not an object")
 

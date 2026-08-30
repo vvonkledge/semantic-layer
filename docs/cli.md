@@ -353,7 +353,8 @@ Two different things are checked, and the split is why they do not drift.
 UTF-8, is not JSON, is not an object, declares another `schema` or `version`, carries a
 key nothing defines at any level, writes a key twice in one object, uses a JSON type a
 field is not written in, uses `NaN` or `Infinity`, gives `true` where a whole number
-belongs, or leaves out a field that has no default. The message names the field and the
+belongs, is nested deeper than the parser will go, or leaves out a field that has no
+default. The message names the field and the
 *shape* that arrived, never the value that was in it.
 
 **Content, refused as `trace` at exit 1**: a trace id that is not 32 hex characters, a

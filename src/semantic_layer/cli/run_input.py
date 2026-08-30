@@ -206,6 +206,17 @@ def decode(document: bytes) -> Run:
         stated = json.loads(text, object_pairs_hook=_pairs, parse_constant=_constant)
     except json.JSONDecodeError as error:
         raise _refuse("the input document", f"is not valid JSON: {error}") from error
+    except RecursionError as error:
+        # Nested deeply enough, a document is valid JSON that the parser gives up on
+        # rather than rejects, and a RecursionError escaping here would be a traceback
+        # on a stream this command promises to leave empty. A run is a handful of levels
+        # deep, so nothing that exhausts a parser is one.
+        raise _refuse(
+            "the input document",
+            f"is nested deeper than this reader parses: {error}. A run is a handful of "
+            f"levels deep - the run, its records, and the references one of them names - "
+            f"so a document deep enough to exhaust a parser is not one.",
+        ) from error
 
     if not isinstance(stated, dict):
         raise _refuse("the input document", f"is {_shown(stated)}, and this reads an object.")

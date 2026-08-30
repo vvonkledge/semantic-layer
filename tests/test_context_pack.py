@@ -8,6 +8,7 @@ refused.
 """
 
 import json
+import sys
 from datetime import datetime, timedelta
 
 import pytest
@@ -281,6 +282,20 @@ def test_a_pack_about_another_target_is_refused(committed):
 def test_a_manifest_that_is_not_json_is_refused(committed):
     with pytest.raises(pack.PackError, match="not valid JSON"):
         pack.verify(committed.content, b"{", as_of=_within(committed))
+
+
+def test_a_manifest_nested_past_the_parser_is_refused(committed):
+    """Valid JSON the parser gives up on rather than rejects, which is a third thing.
+
+    A `RecursionError` is neither a `JSONDecodeError` nor a `PackError`, so before this
+    it left `verify` as a traceback out of the json module - not caught by the
+    `except pack.PackError` a consumer is told to write, and not a sentence naming what
+    is wrong. A manifest is a flat object of named fields, so nothing this deep is one.
+    """
+    depth = sys.getrecursionlimit() * 20
+    nested = ("[" * depth + "]" * depth).encode("utf-8")
+    with pytest.raises(pack.PackError, match="nested deeper than this reader parses"):
+        pack.verify(committed.content, nested, as_of=_within(committed))
 
 
 ## What a consumer must refuse without being handed a traceback.
