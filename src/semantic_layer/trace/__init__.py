@@ -64,6 +64,7 @@ from semantic_layer.trace.project import summary
 from semantic_layer.trace.store import (
     RETENTION_DAYS,
     PackBinding,
+    Recorded,
     RunRecord,
     TraceStore,
     retention_horizon,
@@ -79,6 +80,7 @@ __all__ = [
     "Finding",
     "Metric",
     "PackBinding",
+    "Recorded",
     "Run",
     "RunRecord",
     "Span",

@@ -63,13 +63,16 @@ That is the whole public surface, and the list is deliberately short:
 |---|---|
 | `TraceStore.open(path)` | open or create a store; `:memory:` works, which is what the suite uses |
 | `store.record(run, pack=, as_of=, ...)` | verify the pack, validate the run, write it whole, return its IRI |
+| `store.write(run, pack=, as_of=, ...)` | the same write, reporting the pack binding and whether it wrote or replayed |
 | `store.read(trace_id)` | the run as the store holds it now |
 | `store.summary(trace_id)` | the PROV-O summary, as an rdflib graph |
 | `store.expire_spans(as_of=)` | remove span detail older than ninety days; return what it removed |
 | `store.trace_ids()` | every run recorded here |
 
 There is no update and no delete, and that is not an omission - see
-[append-only](#append-only-and-the-one-way-out).
+[append-only](#append-only-and-the-one-way-out). `write` is a second way in and not a
+second thing to do: it is `record`, saying what it did rather than only what it named,
+for a caller that has to answer for it. Nothing that edits a record was added with it.
 
 ## The six things it describes
 

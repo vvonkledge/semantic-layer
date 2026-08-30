@@ -9,6 +9,7 @@ has produced exactly the evidence nobody can read.
 
 import json
 import sqlite3
+from dataclasses import replace
 
 import pytest
 from trace_runs import (
@@ -26,7 +27,7 @@ from trace_runs import (
 from semantic_layer import ids
 from semantic_layer import pack as packs
 from semantic_layer.github import digest_of
-from semantic_layer.trace import Finding, Metric, TraceError, TraceStore, model
+from semantic_layer.trace import Finding, Metric, Run, TraceError, TraceStore, model
 from semantic_layer.trace import store as store_module
 
 
@@ -464,6 +465,65 @@ def test_a_replay_is_a_no_op_only_when_the_whole_content_agrees(store, accepted_
         assert store.read(TRACE_ID).run == run(), what
 
 
+def test_write_says_whether_it_wrote_the_run_or_found_it(store, accepted_pack):
+    """The half a caller cannot work out for itself, and the reason ``write`` exists.
+
+    Recording is idempotent, so the identifier is the same either way and a writer that
+    retried after a timeout has no way to tell which call landed. This is that answer,
+    taken from the write rather than from a question asked before it.
+    """
+    first = store.write(run(), pack=accepted_pack, as_of=AS_OF, expect_target=TARGET)
+    assert first.created is True
+    assert first.trace_id == TRACE_ID
+    assert first.run == store.record(run(), pack=accepted_pack, as_of=AS_OF)
+    assert first.pack == store.read(TRACE_ID).pack
+
+    again = store.write(run(), pack=accepted_pack, as_of=AS_OF)
+    assert again.created is False
+    assert again == replace(first, created=False)
+
+
+def _wrote_first(monkeypatch, store, accepted_pack, first: Run) -> None:
+    """Another process recorded ``first`` after this one last looked, and before it wrote.
+
+    That interleaving is the one a check before the write cannot rule out, and it is the
+    only way into the store's integrity-error path. It is staged rather than raced: two
+    real processes would reproduce it rarely and never on demand, and what is under test
+    is what the store does once it has happened.
+    """
+    stored = store_module.TraceStore._stored
+    looked = []
+
+    def look(self, trace_id):
+        if not looked:
+            looked.append(trace_id)
+            store.record(first, pack=accepted_pack, as_of=AS_OF)
+            return None
+        return stored(self, trace_id)
+
+    monkeypatch.setattr(store_module.TraceStore, "_stored", look)
+
+
+def test_a_run_another_writer_landed_first_is_held_against_what_landed(
+    store, accepted_pack, monkeypatch
+):
+    """Losing the insert is not a failure when the run is the same one."""
+    _wrote_first(monkeypatch, store, accepted_pack, run())
+    recorded = store.write(run(), pack=accepted_pack, as_of=AS_OF)
+    assert recorded.created is False
+    assert store.read(TRACE_ID).run == run()
+
+
+def test_a_different_run_that_lost_the_insert_is_refused_and_writes_nothing(
+    store, accepted_pack, monkeypatch
+):
+    """Two runs under one identifier is refused whichever of them got there first."""
+    _wrote_first(monkeypatch, store, accepted_pack, run())
+    with pytest.raises(TraceError, match="already recorded and this one differs"):
+        store.write(run(outcome="failed"), pack=accepted_pack, as_of=AS_OF)
+    assert store.read(TRACE_ID).run == run()
+
+
 def test_a_trace_id_reused_for_another_pack_is_refused(store, accepted_pack):
     """The pack is part of the run: the same work against different knowledge is a different run."""
     stated = json.loads(accepted_pack.manifest)
@@ -555,11 +615,26 @@ def test_the_supported_api_offers_no_way_to_change_a_recorded_run():
     A caller looking for an update or a delete finds neither, and finds nothing that
     takes a run and a change either. The one thing that removes anything is retention,
     which takes an instant and decides for itself what is old enough.
+
+    ``write`` is a second way in and not a second thing to do: it is the write ``record``
+    performs, returning what it did rather than only what it named, for the process
+    boundary in ``semantic_layer.cli`` that has to report whether a run was written or
+    replayed. It takes a run and no change, like ``record``, and there is still nothing
+    here that edits one.
     """
     import semantic_layer.trace as trace
 
     public = {name for name in dir(TraceStore) if not name.startswith("_")}
-    assert public == {"open", "close", "record", "expire_spans", "read", "summary", "trace_ids"}
+    assert public == {
+        "open",
+        "close",
+        "record",
+        "write",
+        "expire_spans",
+        "read",
+        "summary",
+        "trace_ids",
+    }
     assert set(trace.__all__) == {name for name in dir(trace) if not name.startswith("_")} - {
         "model",
         "project",
