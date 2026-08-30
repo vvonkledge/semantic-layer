@@ -170,6 +170,25 @@ supplies two, one inside the window and one past it, so its committed answer pro
 directions rather than whichever one today happens to give. Nothing in this repository
 reads the wall clock to decide whether a fact is fresh.
 
+**Staleness is therefore not a shape, and could not be.** SHACL judges a graph, and a
+graph does not know what time it is. A rule that rejected stale observations would have
+to read the clock, which would make `just test` pass in the morning and fail in the
+afternoon over a file nobody touched - and worse, it would delete history: an observation
+that has gone stale is still a true record of what the source held, and the honest thing
+to do with it is say when it stopped being current, not refuse to load it.
+
+So the shapes enforce what a graph can answer for itself - that both instants are
+present, are instants, and describe a window that closes after it opens
+(`shpt:ObservationShape`) - and the staleness question is asked where somebody is about
+to act on the answer, against an instant they name: in the competency query, and in
+`pack.verify`.
+
+The window is deliberately blunt: 24 hours for every artifact this source imports, rather
+than a per-field guess about how fast each one moves. A branch head goes stale in
+minutes and a repository id never does, and pretending to know the difference would be a
+number nobody could defend. One declared window a consumer can read is more useful than
+five invented ones.
+
 Trust works the same way: `tech:trustBasis` is a sentence saying what was read, with
 whose authority, and what that authority does not cover. It travels with every context
 pack, so a consumer weighs a stated claim instead of inventing a generous one.

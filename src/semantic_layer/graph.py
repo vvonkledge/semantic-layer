@@ -1,8 +1,11 @@
-"""Loading, validating and querying the L1 graph.
+"""Loading, validating and querying both layers.
 
 The Turtle files are the contract. Everything here is a thin, deterministic wrapper
-over rdflib and pyshacl so that tests, and later any query path, read the same graph
-the same way.
+over rdflib and pyshacl so that tests, and any query path, read the same graph the same
+way.
+
+The one thing this module decides rather than wraps is which named graph a file loads
+into, and ``data_graph`` says why that is the whole of what separates the layers.
 
 No reasoner is ever run. ``sh:class`` already follows ``rdfs:subClassOf*``, so class
 hierarchies work without inference, while ``rdfs:domain`` and ``rdfs:range`` stay

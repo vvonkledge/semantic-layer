@@ -1,10 +1,14 @@
-"""IRI minting for the semantic layer. The one place identity rules live.
+"""IRI minting for both layers. The one place identity rules live.
 
 An identifier is a URL because a URL is globally unique without a registry, not
 because anything is expected to be served from it. See docs/identifiers.md.
 
-Identifiers are never reused and never renamed. A rename mints a new IRI and points
-it at the old one with ``core:supersedes``; the old one stays, deprecated.
+The two layers mint differently, and the reason is who is naming the thing. An L1
+identifier carries a slug a person authored, and is never reused and never renamed: a
+rename mints a new IRI and points it at the old one with ``core:supersedes``, and the
+old one stays, deprecated. An L2 identifier carries an id a source issued, is scoped by
+that source, and is not renamed because it was never a name - a rename upstream rewrites
+an attribute and leaves the identifier exactly where it was.
 """
 
 from __future__ import annotations

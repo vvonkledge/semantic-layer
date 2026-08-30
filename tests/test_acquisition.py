@@ -160,7 +160,7 @@ def test_pagination_pointed_off_the_api_is_refused(responses):
 
 def test_an_endless_pagination_chain_stops(responses):
     responses[BRANCHES_URL] = ok([BRANCH], {"link": f'<{BRANCHES_URL}>; rel="next"'})
-    with pytest.raises(acquire.AcquisitionError, match="passed 20 pages"):
+    with pytest.raises(acquire.AcquisitionError, match=f"passed {acquire.MAX_PAGES} pages"):
         acquire.capture(reader=reader(responses))
 
 
