@@ -1,0 +1,496 @@
+# SHACL shapes for the L2 technical layer.
+#
+# The rules are held to exactly the standard ontology/shapes/biz.ttl set, and by the
+# same suite: one constraint, one message written for whoever tripped it, one negative
+# fixture committing that exact message. tests/test_shape_coverage.py reads every
+# shapes file in this directory into one graph and audits all of them together, so
+# nothing here is covered by being in a newer file.
+#
+# The refused terms are refused here too. The qualified family, sh:flags and
+# sh:ignoredProperties may not be written in this file for the reasons the L1 shapes
+# file gives, and where an L2 rule wanted one it is written some other way instead: the
+# freshness window and the two graph boundaries below are sh:sparql constraints rather
+# than qualified counts, and each is a single question with a single answer a fixture
+# can be written against.
+#
+# What is new here is that an L2 statement has to say where it came from. Every rule in
+# ObservationShape and ArtifactShape exists for that: an observation with no source, no
+# instant or no digest, or an artifact attributed to none of them, is not a weaker
+# technical fact - it is a claim about a system with no way to ask when it was last
+# true, which is the thing L2 exists to never produce.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core: <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix shpt: <https://semantic-layer.19h09.co/shapes/tech#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://semantic-layer.19h09.co/shapes/tech>
+    a owl:Ontology ;
+    rdfs:label "Semantic layer technical shapes (L2)" ;
+    owl:versionInfo "0.1.0" ;
+    sh:declare [ sh:prefix "biz"  ; sh:namespace "https://semantic-layer.19h09.co/vocab/biz#"^^xsd:anyURI ] ,
+               [ sh:prefix "core" ; sh:namespace "https://semantic-layer.19h09.co/vocab/core#"^^xsd:anyURI ] ,
+               [ sh:prefix "tech" ; sh:namespace "https://semantic-layer.19h09.co/vocab/tech#"^^xsd:anyURI ] ,
+               [ sh:prefix "rdf"  ; sh:namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"^^xsd:anyURI ] ,
+               [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,
+               [ sh:prefix "owl"  ; sh:namespace "http://www.w3.org/2002/07/owl#"^^xsd:anyURI ] ,
+               [ sh:prefix "xsd"  ; sh:namespace "http://www.w3.org/2001/XMLSchema#"^^xsd:anyURI ] .
+
+## Identity: an observed entity is a minted, source-scoped identifier.
+
+shpt:TechIdentityShape
+    a sh:NodeShape ;
+    sh:targetClass tech:Source , tech:Observation , tech:Artifact ;
+    sh:nodeKind sh:IRI ;
+    sh:message "An observed entity was committed as a blank node, with no identifier. Every L2 entity carries an identifier minted under the source that produced it: a blank node cannot be re-observed, cited from a context pack, or matched against the next observation of the same thing. See docs/identifiers.md." .
+
+## The source: which system, at which installation, believed on what basis.
+
+shpt:SourceShape
+    a sh:NodeShape ;
+    sh:targetClass tech:Source ;
+
+    sh:property [
+        sh:path tech:provider ;
+        sh:minCount 1 ;
+        sh:message "Source {$this} names no provider with tech:provider. The provider is half of the scope every identifier from this source is minted under, so a source without one cannot be told apart from any other." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:provider ;
+        sh:maxCount 1 ;
+        sh:message "Source {$this} names more than one provider with tech:provider. One source is one system; two providers behind one identifier is two sources, and their local ids will collide." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:provider ;
+        sh:pattern "^[a-z0-9]+(-[a-z0-9]+)*$" ;
+        sh:message "Source {$this} has the provider {?value}, which is not a slug: lowercase letters and digits, joined by single hyphens. The provider is written into every identifier this source scopes, so a provider that can be spelled two ways is an entity that can be minted twice." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:apiRoot ;
+        sh:minCount 1 ;
+        sh:message "Source {$this} names no endpoint with tech:apiRoot. Which installation of a provider was read is not a detail: two of them issue the same ids for different things." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:apiRoot ;
+        sh:maxCount 1 ;
+        sh:message "Source {$this} names more than one endpoint with tech:apiRoot. A reader cannot tell which one an observation came from, which is the question the endpoint is recorded to answer." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:trustBasis ;
+        sh:minCount 1 ;
+        sh:message "Source {$this} states no trust basis with tech:trustBasis. A consumer handed data with no stated basis for believing it has to invent one, and will invent a generous one." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:trustBasis ;
+        sh:maxCount 1 ;
+        sh:message "Source {$this} states more than one trust basis with tech:trustBasis. Two claims about why this is believable leave the consumer to pick, and the point of stating it was to take that choice away." ;
+    ] .
+
+## The observation: who looked, when, at what, and how the answer can be checked.
+
+shpt:ObservationShape
+    a sh:NodeShape ;
+    sh:targetClass tech:Observation ;
+
+    sh:property [
+        sh:path tech:observedFrom ;
+        sh:minCount 1 ;
+        sh:message "Observation {$this} names no source with tech:observedFrom. An observation of nothing in particular cannot be reproduced, compared with the next one, or trusted on any stated basis." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:observedFrom ;
+        sh:maxCount 1 ;
+        sh:message "Observation {$this} names more than one source with tech:observedFrom. One reading of one system; two sources in one observation cannot be reproduced from either." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:observedFrom ;
+        sh:class tech:Source ;
+        sh:message "Observation {$this} was observed from {?value}, which is not a Source. An observation hangs off the system it read, not off something that system happened to contain." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:observedAt ;
+        sh:minCount 1 ;
+        sh:message "Observation {$this} names no instant with tech:observedAt. A technical fact is only true as of the last time somebody looked, so an observation that cannot say when it looked is not a weaker fact - it is not a fact." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:observedAt ;
+        sh:maxCount 1 ;
+        sh:message "Observation {$this} names more than one instant with tech:observedAt. Two answers to 'when was this true' is no answer, and freshness is computed from this one." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:observedAt ;
+        sh:datatype xsd:dateTime ;
+        sh:message "Observation {$this} was observed at {?value}, which is not an xsd:dateTime. A date is not an instant, and comparing one against a freshness limit gives an answer that looks right and is not." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:freshUntil ;
+        sh:minCount 1 ;
+        sh:message "Observation {$this} names no freshness limit with tech:freshUntil. The limit is materialized when the observation is reconciled precisely so nobody has to add a duration to a timestamp at read time; an observation without one leaves every consumer to guess how long it lasts." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:freshUntil ;
+        sh:maxCount 1 ;
+        sh:message "Observation {$this} names more than one freshness limit with tech:freshUntil. A consumer comparing its instant against both gets two answers, and will act on the convenient one." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:freshUntil ;
+        sh:datatype xsd:dateTime ;
+        sh:message "Observation {$this} is fresh until {?value}, which is not an xsd:dateTime. Freshness is decided by comparing two instants, and a value that is not one compares false in silence." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:snapshotDigest ;
+        sh:minCount 1 ;
+        sh:message "Observation {$this} names no captured response with tech:snapshotDigest. The digest is what lets a reader hold this graph against the bytes it was reconciled from; without it the graph is a claim about a source that nothing ties to the source." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:snapshotDigest ;
+        sh:maxCount 1 ;
+        sh:message "Observation {$this} names more than one captured response with tech:snapshotDigest. Two digests describe two captures, and this graph was reconciled from one of them." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:snapshotDigest ;
+        sh:pattern "^sha256:[0-9a-f]{64}$" ;
+        sh:message "Observation {$this} carries the snapshot digest {?value}, which is not a sha256: digest followed by 64 lower-case hex characters. A digest nothing can recompute in the same spelling verifies nothing." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:observationTarget ;
+        sh:minCount 1 ;
+        sh:message "Observation {$this} names no target with tech:observationTarget. What was asked for is what lets a consumer expecting one thing notice it was handed another." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:observationTarget ;
+        sh:maxCount 1 ;
+        sh:message "Observation {$this} names more than one target with tech:observationTarget. One capture asked the source one question; two recorded targets mean a consumer cannot tell which answer they are holding." ;
+    ] ;
+
+    # Written as a SPARQL constraint rather than a pair of counts because the rule is
+    # about two values relative to each other, which no cardinality states.
+    #
+    # Both values are required to be instants before they are compared, and the two
+    # sh:datatype constraints above report it when they are not. That is not tidiness:
+    # rdflib will happily order an xsd:date against an xsd:dateTime and hand back an
+    # answer, so a window check written without the guard reports a coherent window as
+    # expired - one rule failing for another rule's reason, and a reader told to fix
+    # the wrong thing.
+    #
+    # The comparison is <= and both halves of it are defended by a fixture: one window
+    # that closed before the reading, and one that closed exactly at it. A fixture
+    # sitting a day past the boundary would leave the equality undefended, and <= could
+    # be loosened to < with the suite still green - which is the one thing the negative
+    # fixtures exist to prevent.
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Observation {$this} was observed at {?observedAt} and is fresh until {?freshUntil}, which is not later. An observation whose freshness ends no later than the reading it belongs to is stale at every instant a consumer could compare it against, so nothing would ever read it and nothing would ever say why." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/tech> ;
+        sh:select """
+            SELECT $this ?observedAt ?freshUntil
+            WHERE {
+                $this tech:observedAt ?observedAt ;
+                      tech:freshUntil ?freshUntil .
+                FILTER ( datatype(?observedAt) = xsd:dateTime )
+                FILTER ( datatype(?freshUntil) = xsd:dateTime )
+                FILTER ( ?freshUntil <= ?observedAt )
+            }
+        """ ;
+    ] .
+
+## Every imported thing, and the observation it is answerable to.
+
+shpt:ArtifactShape
+    a sh:NodeShape ;
+    sh:targetClass tech:Artifact ;
+
+    sh:property [
+        sh:path tech:observedIn ;
+        sh:minCount 1 ;
+        sh:message "Artifact {$this} is attributable to no observation with tech:observedIn. Every L2 fact carries the reading it came from, or a consumer holds a statement about a system with no way to ask when it was last checked." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:observedIn ;
+        sh:maxCount 1 ;
+        sh:message "Artifact {$this} is attributable to more than one observation with tech:observedIn. Two readings are two facts about the same thing at two instants; keeping both on one node loses which of them is being read." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:observedIn ;
+        sh:class tech:Observation ;
+        sh:message "Artifact {$this} is attributed to {?value}, which is not an Observation. Provenance points at the act of looking, not at the source and not at another artifact." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:sourceLocalId ;
+        sh:minCount 1 ;
+        sh:message "Artifact {$this} carries no tech:sourceLocalId. The name a thing has inside its source is what lets an identifier minted here be traced back to what it was minted from." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:sourceLocalId ;
+        sh:maxCount 1 ;
+        sh:message "Artifact {$this} carries more than one tech:sourceLocalId. Two local names on one artifact means two things in the source were reconciled into one here." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:webUrl ;
+        sh:maxCount 1 ;
+        sh:message "Artifact {$this} carries more than one tech:webUrl. Two places to go and look at one thing is a reader guessing which is current." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:webUrl ;
+        sh:pattern "^https://" ;
+        sh:message "Artifact {$this} carries the web URL {?value}, which is not https. A URL is text the source chose and this layer hands on to a reader, so it is checked rather than believed." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:realizes ;
+        sh:class biz:Capability ;
+        sh:message "Artifact {$this} realizes {?value}, which is not a Capability. The one edge between the layers points at what the organization is able to do, and at nothing else." ;
+    ] ;
+
+    # The identifier already carries the source, so this compares the two spellings of
+    # the same fact and catches the case where they disagree. A node with no identifier
+    # has no source in it to compare, and shpt:TechIdentityShape reports that instead,
+    # so this steps aside rather than reporting the same node for a second reason.
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Artifact {$this} is attributed to {?observation}, which was made from a different source. An identifier is scoped by its source, so an artifact minted under one and attributed to a reading of another is two things being recorded as one - which is exactly what source scoping exists to make impossible." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/tech> ;
+        sh:select """
+            SELECT $this ?observation
+            WHERE {
+                $this tech:observedIn ?observation .
+                ?observation tech:observedFrom ?source .
+                FILTER ( isIRI($this) )
+                FILTER ( ! STRSTARTS( STR($this), CONCAT(STR(?source), "/") ) )
+            }
+        """ ;
+    ] .
+
+## Account.
+
+shpt:AccountShape
+    a sh:NodeShape ;
+    sh:targetClass tech:Account ;
+
+    sh:property [
+        sh:path tech:accountLogin ;
+        sh:minCount 1 ;
+        sh:message "Account {$this} carries no tech:accountLogin. The handle is the only part of an account a person recognizes; the identifier is a number the source issued." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:accountLogin ;
+        sh:maxCount 1 ;
+        sh:message "Account {$this} carries more than one tech:accountLogin. An account has one handle at a time; the previous one belongs to the previous observation." ;
+    ] .
+
+## Repository.
+
+shpt:RepositoryShape
+    a sh:NodeShape ;
+    sh:targetClass tech:Repository ;
+
+    sh:property [
+        sh:path tech:ownedByAccount ;
+        sh:minCount 1 ;
+        sh:message "Repository {$this} names no account with tech:ownedByAccount. The source says every repository sits under an account, so one that does not is a reading that lost something." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:ownedByAccount ;
+        sh:maxCount 1 ;
+        sh:message "Repository {$this} names more than one account with tech:ownedByAccount. This is the source's own containment, and the source has exactly one answer for it." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:ownedByAccount ;
+        sh:class tech:Account ;
+        sh:message "Repository {$this} sits under {?value}, which is not an Account. This edge is where the source says the repository lives, and it is not biz:ownedBy: no Actor and no accountability follow from it." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:defaultBranch ;
+        sh:minCount 1 ;
+        sh:message "Repository {$this} names no branch with tech:defaultBranch. The source names one, so an observation that cannot say which read the branch list and the repository at odds with each other." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:defaultBranch ;
+        sh:maxCount 1 ;
+        sh:message "Repository {$this} names more than one branch with tech:defaultBranch. The default is where a reader who names no branch is sent, and there is one such place." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:defaultBranch ;
+        sh:class tech:Branch ;
+        sh:message "Repository {$this} defaults to {?value}, which is not a Branch. The default branch has to be a branch the same observation saw, not a name nothing was read for." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:repositoryPath ;
+        sh:minCount 1 ;
+        sh:message "Repository {$this} carries no tech:repositoryPath. Where a repository is reachable today is the only part of it a person can act on; the identifier is a number that survives the rename." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:repositoryPath ;
+        sh:maxCount 1 ;
+        sh:message "Repository {$this} carries more than one tech:repositoryPath. A repository is at one path at a time; a rename rewrites this one rather than adding a second." ;
+    ] .
+
+## Branch.
+
+shpt:BranchShape
+    a sh:NodeShape ;
+    sh:targetClass tech:Branch ;
+
+    sh:property [
+        sh:path tech:branchOf ;
+        sh:minCount 1 ;
+        sh:message "Branch {$this} names no repository with tech:branchOf. A branch name identifies something only within one repository, so a branch belonging to none identifies nothing." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:branchOf ;
+        sh:maxCount 1 ;
+        sh:message "Branch {$this} names more than one repository with tech:branchOf. Two repositories with a branch of the same name have two branches, and this node is claiming to be both." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:branchOf ;
+        sh:class tech:Repository ;
+        sh:message "Branch {$this} belongs to {?value}, which is not a Repository. A branch hangs off the repository that contains it, not off the account or the observation." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:branchName ;
+        sh:minCount 1 ;
+        sh:message "Branch {$this} carries no tech:branchName. The name is half of the branch's identity, and it is carried as an attribute so a reader never has to decode an identifier to get it back." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:branchName ;
+        sh:maxCount 1 ;
+        sh:message "Branch {$this} carries more than one tech:branchName. Only one of them can be the name in the identifier, and nothing here says which." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:headCommit ;
+        sh:minCount 1 ;
+        sh:message "Branch {$this} carries no tech:headCommit. Where the branch pointed is the one thing the observation actually saw; without it this node records that a branch existed and nothing about it." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:headCommit ;
+        sh:maxCount 1 ;
+        sh:message "Branch {$this} carries more than one tech:headCommit. A branch points at one commit at an instant, and the other one belongs to a different observation." ;
+    ] ;
+
+    sh:property [
+        sh:path tech:headCommit ;
+        sh:pattern "^[0-9a-f]{40}$" ;
+        sh:message "Branch {$this} points at {?value}, which is not a 40-character lower-case SHA-1. An abbreviated or re-cased commit id does not compare equal to the one the source issued, so nothing downstream can match it." ;
+    ] .
+
+## The L2 boundary: observed truth never states a business fact.
+#
+# The mirror of shp:L1BoundaryShape, and it rests on the same mechanism: the
+# vocabularies are loaded into named graphs of their own and this asks inside them, so
+# only a vocabulary can say what a vocabulary defines and an observed file cannot grant
+# itself an allowance by declaring a term. tech:realizes is allowed because the
+# technical vocabulary defines it - that is the one crossing edge, and it points up.
+
+shpt:L2BoundaryShape
+    a sh:NodeShape ;
+    sh:targetClass tech:Source , tech:Observation , tech:Artifact ;
+
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "L2 node {$this} asserts {?property}, which no L2 vocabulary defines. Business facts - goals, capabilities, owners, roles, policies - are declared by the organization and never read out of a system. The one term that crosses is tech:realizes, and it points upward." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/tech> ;
+        sh:select """
+            SELECT $this ?property
+            WHERE {
+                $this ?property ?object .
+                FILTER NOT EXISTS {
+                    GRAPH ?vocabulary { ?property rdfs:isDefinedBy ?vocabulary }
+                    FILTER ( ?vocabulary IN (
+                        <https://semantic-layer.19h09.co/vocab/core> ,
+                        <https://semantic-layer.19h09.co/vocab/tech>
+                    ) )
+                }
+                FILTER ( ?property NOT IN (
+                    rdf:type , rdfs:label , rdfs:comment , rdfs:seeAlso , owl:deprecated
+                ) )
+            }
+        """ ;
+    ] .
+
+## The layer boundary, drawn where the files are rather than where the terms are.
+#
+# The two boundary shapes ask what a node may say. These two ask where it may be said,
+# which is the question that is left. Curated business truth is committed under
+# ontology/instances/business/ and observed technical truth under
+# ontology/instances/technical/; the loader puts each directory in a named graph of its
+# own and Turtle has no syntax for naming one, so a file cannot claim to be the other
+# layer. See graph.data_graph.
+#
+# Neither message names the offending property, on purpose: every triple about a node
+# in the wrong graph is equally wrong, and the fix is to move the file rather than to
+# remove a line.
+
+shpt:ObservedFactInTheCuratedGraphShape
+    a sh:NodeShape ;
+    sh:targetClass tech:Source , tech:Observation , tech:Artifact ;
+
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Technical node {$this} is committed in the curated business graph. Observed technical truth belongs under ontology/instances/technical/, where it is loaded as observed and carries the observation it came from; a technical fact filed as curated business truth is a fact with an expiry date in a layer that has no way to honour one." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/tech> ;
+        sh:select """
+            SELECT DISTINCT $this
+            WHERE {
+                GRAPH <https://semantic-layer.19h09.co/graph/l1-curated> { $this ?property ?object }
+            }
+        """ ;
+    ] .
+
+shpt:CuratedFactInTheObservedGraphShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Goal , biz:Capability , biz:Actor , biz:Role , biz:Policy , biz:Assignment ;
+
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Business node {$this} is committed in the observed technical graph. A source knows what it contains, never what the organization is accountable for, so no import may author an L1 entity: curated business truth belongs under ontology/instances/business/ and gets there by a reviewed change a person made on purpose." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/tech> ;
+        sh:select """
+            SELECT DISTINCT $this
+            WHERE {
+                GRAPH <https://semantic-layer.19h09.co/graph/l2-observed> { $this ?property ?object }
+            }
+        """ ;
+    ] .

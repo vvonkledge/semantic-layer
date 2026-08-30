@@ -1,0 +1,18 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core: <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# A business goal committed under ontology/instances/fixtures/technical/, which
+# the loader reads as observed. Nothing in the file says so and nothing in the
+# file could: Turtle has no syntax for naming a graph, so where a fact is
+# committed is the whole of what decides which layer it is in.
+
+<https://semantic-layer.19h09.co/fixture/biz/goal/checkout-reliability>
+    a biz:Goal ;
+    rdfs:label "Checkout reliability" .

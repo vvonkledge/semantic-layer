@@ -1,0 +1,1 @@
+Artifact https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748 is attributable to no observation with tech:observedIn. Every L2 fact carries the reading it came from, or a consumer holds a statement about a system with no way to ask when it was last checked.

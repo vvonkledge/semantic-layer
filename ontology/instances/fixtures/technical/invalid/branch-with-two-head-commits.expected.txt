@@ -1,0 +1,1 @@
+Branch https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main carries more than one tech:headCommit. A branch points at one commit at an instant, and the other one belongs to a different observation.

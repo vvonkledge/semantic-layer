@@ -1,0 +1,94 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+#
+# One complete observation, invented to exercise the L2 vocabulary, the L2 shapes and
+# the competency questions. It is shaped like the real one committed under
+# ontology/instances/technical/, with a second branch so the question "which artifacts
+# belong to this repository" has more than one answer to give.
+#
+# Fixtures are minted under .../fixture/l2/, which no accepted observation ever uses,
+# so a fixture can never be mistaken for something a source was actually seen to hold.
+# The instants are fixed, and the competency questions compare against instants written
+# into the queries, so nothing here depends on when the suite runs.
+
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# The source is the scope, so it is the prefix of every identifier it contributes.
+@prefix obs:    <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/> .
+@prefix acct:   <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/> .
+@prefix repo:   <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/> .
+@prefix branch: <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/> .
+
+## The source: which system, at which installation, believed on what basis.
+
+<https://semantic-layer.19h09.co/fixture/l2/github/api-github-com>
+    a tech:Source ;
+    rdfs:label "github at https://api.github.com" ;
+    tech:provider "github" ;
+    tech:apiRoot "https://api.github.com"^^xsd:anyURI ;
+    tech:trustBasis "Unauthenticated read of the public GitHub REST API, captured in full and hashed. What GitHub showed an anonymous caller, and nothing about who is accountable for it." .
+
+## The observation: one reading, at one instant, of one target.
+#
+# It is named by the digest of the capture it was reconciled from, so two readings of
+# the same repository are two observations and the graph can hold both.
+
+obs:3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed
+    a tech:Observation ;
+    rdfs:label "vvonkledge/siana observed 2026-08-30T06:07:15Z" ;
+    tech:observedFrom <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com> ;
+    tech:observedAt "2026-08-30T06:07:15Z"^^xsd:dateTime ;
+    tech:freshUntil "2026-08-31T06:07:15Z"^^xsd:dateTime ;
+    tech:observationTarget "vvonkledge/siana" ;
+    tech:snapshotDigest "sha256:3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed" .
+
+## What that reading saw.
+
+acct:121954748
+    a tech:Account ;
+    rdfs:label "vvonkledge" ;
+    tech:observedIn obs:3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed ;
+    tech:sourceLocalId "121954748" ;
+    tech:accountLogin "vvonkledge" ;
+    tech:webUrl "https://github.com/vvonkledge"^^xsd:anyURI .
+
+# The identifier is the immutable numeric id GitHub issued, so the path below is an
+# attribute a rename rewrites rather than a name a rename replaces.
+repo:1347717349
+    a tech:Repository ;
+    rdfs:label "siana" ;
+    tech:observedIn obs:3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed ;
+    tech:sourceLocalId "1347717349" ;
+    tech:ownedByAccount acct:121954748 ;
+    tech:defaultBranch branch:main ;
+    tech:repositoryPath "vvonkledge/siana" ;
+    tech:visibility "public" ;
+    tech:primaryLanguage "Python" ;
+    tech:archived false ;
+    tech:pushedAt "2026-08-30T05:07:19Z"^^xsd:dateTime ;
+    tech:webUrl "https://github.com/vvonkledge/siana"^^xsd:anyURI .
+
+# GitHub issues a branch no immutable id and git has none to issue, so a branch is its
+# name within its repository and its identifier carries both. The name is
+# percent-encoded, which is what stops a slash in it becoming structure the parser
+# would read back as a different entity.
+branch:main
+    a tech:Branch ;
+    rdfs:label "main" ;
+    tech:observedIn obs:3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed ;
+    tech:sourceLocalId "main" ;
+    tech:branchOf repo:1347717349 ;
+    tech:branchName "main" ;
+    tech:headCommit "558d5f95a97775de2d786eee7ac1f4eb24c2f80f" ;
+    tech:protected true .
+
+<https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/release%2F1.4>
+    a tech:Branch ;
+    rdfs:label "release/1.4" ;
+    tech:observedIn obs:3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed ;
+    tech:sourceLocalId "release/1.4" ;
+    tech:branchOf repo:1347717349 ;
+    tech:branchName "release/1.4" ;
+    tech:headCommit "0f4b3ac8ff35b1e08c8a2d7d1e0f4b0f43e2a11c" ;
+    tech:protected false .

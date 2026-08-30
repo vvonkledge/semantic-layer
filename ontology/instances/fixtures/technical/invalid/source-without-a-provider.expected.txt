@@ -1,0 +1,1 @@
+Source https://semantic-layer.19h09.co/fixture/l2/github/api-github-com names no provider with tech:provider. The provider is half of the scope every identifier from this source is minted under, so a source without one cannot be told apart from any other.

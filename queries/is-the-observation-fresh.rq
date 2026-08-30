@@ -1,0 +1,30 @@
+# Competency question: is this observation still fresh at a given instant?
+#
+# The comparison instant is supplied by the caller, in the query, and is never the wall
+# clock. Two are supplied here - one inside the window and one past it - so the
+# committed answer proves both directions rather than whichever one today happens to
+# give.
+#
+# Every comparison is dateTime against dateTime. tech:freshUntil was materialized when
+# the observation was reconciled precisely so this query would never have to add a
+# duration to a timestamp: SPARQL engines disagree about whether they can, and the ones
+# that cannot leave the result unbound. An unbound value in a FILTER is not an error,
+# it is false, so a freshness check written with duration arithmetic passes everything
+# in silence. See docs/evolution.md.
+
+PREFIX tech: <https://semantic-layer.19h09.co/vocab/tech#>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?observation ?target ?observedAt ?freshUntil ?asOf ?fresh
+WHERE {
+    VALUES ?asOf {
+        "2026-08-30T18:00:00Z"^^xsd:dateTime
+        "2026-09-04T09:30:00Z"^^xsd:dateTime
+    }
+    ?observation a tech:Observation ;
+                 tech:observationTarget ?target ;
+                 tech:observedAt ?observedAt ;
+                 tech:freshUntil ?freshUntil .
+    BIND ( ?asOf < ?freshUntil AS ?fresh )
+}
+ORDER BY ?observation ?asOf

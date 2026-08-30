@@ -1,0 +1,1 @@
+Repository https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349 defaults to https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748, which is not a Branch. The default branch has to be a branch the same observation saw, not a name nothing was read for.

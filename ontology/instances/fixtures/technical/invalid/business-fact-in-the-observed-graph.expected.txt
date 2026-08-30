@@ -1,0 +1,1 @@
+Business node https://semantic-layer.19h09.co/fixture/biz/goal/checkout-reliability is committed in the observed technical graph. A source knows what it contains, never what the organization is accountable for, so no import may author an L1 entity: curated business truth belongs under ontology/instances/business/ and gets there by a reviewed change a person made on purpose.

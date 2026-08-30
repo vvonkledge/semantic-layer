@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
+
+# A capture writes through a temporary file in the target directory and moves it into
+# place atomically. One is only left behind if the process was killed outright.
+*.partial

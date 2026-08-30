@@ -1,0 +1,1 @@
+Repository https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349 sits under https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main, which is not an Account. This edge is where the source says the repository lives, and it is not biz:ownedBy: no Actor and no accountability follow from it.

@@ -1,0 +1,1 @@
+Source https://semantic-layer.19h09.co/fixture/l2/github/api-github-com names more than one provider with tech:provider. One source is one system; two providers behind one identifier is two sources, and their local ids will collide.

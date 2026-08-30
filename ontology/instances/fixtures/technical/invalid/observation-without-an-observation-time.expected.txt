@@ -1,0 +1,1 @@
+Observation https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed names no instant with tech:observedAt. A technical fact is only true as of the last time somebody looked, so an observation that cannot say when it looked is not a weaker fact - it is not a fact.

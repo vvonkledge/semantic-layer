@@ -80,8 +80,21 @@ def _typed_entities(paths):
         (graph.BUSINESS_DIR, False),
         (graph.VALID_FIXTURES_DIR, True),
         (graph.INVALID_FIXTURES_DIR, True),
+        # The technical directories hold business entities too: the fixture that proves
+        # an L1 entity cannot be smuggled in as observed truth is a business entity
+        # committed there on purpose, and it is minted like any other.
+        (graph.TECHNICAL_DIR, False),
+        (graph.TECHNICAL_VALID_FIXTURES_DIR, True),
+        (graph.TECHNICAL_INVALID_FIXTURES_DIR, True),
     ],
-    ids=["business", "valid-fixtures", "invalid-fixtures"],
+    ids=[
+        "business",
+        "valid-fixtures",
+        "invalid-fixtures",
+        "technical",
+        "technical-valid-fixtures",
+        "technical-invalid-fixtures",
+    ],
 )
 def test_every_committed_entity_carries_the_identifier_minting_would_give_it(directory, fixture):
     for subject, rdf_class in _typed_entities(graph.turtle_files(directory)):

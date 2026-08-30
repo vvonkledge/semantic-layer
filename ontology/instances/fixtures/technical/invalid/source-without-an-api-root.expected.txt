@@ -1,0 +1,1 @@
+Source https://semantic-layer.19h09.co/fixture/l2/github/api-github-com names no endpoint with tech:apiRoot. Which installation of a provider was read is not a detail: two of them issue the same ids for different things.

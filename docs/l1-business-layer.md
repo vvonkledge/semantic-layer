@@ -45,10 +45,11 @@ unassignable: nobody can grant permission for it and nobody answers when it goes
 wrong. Not two, because shared accountability is how a decision ends up with nobody
 making it. If two teams genuinely own different parts, those are two capabilities.
 
-## The boundary with L2, which does not exist yet
+## The boundary with L2
 
-L1 never names a service, a repository, a database, an environment or an endpoint.
-Those belong to a technical layer, L2, which this repository has not built.
+L1 never names a service, a repository, a database, an environment or an endpoint. Those
+belong to the technical layer, L2, which now exists: see
+[l2-technical-layer.md](l2-technical-layer.md).
 
 The reason is not tidiness. A technical fact is only true as of the last time someone
 looked at reality, so it decays and must carry an observation time. A business fact is
@@ -56,19 +57,30 @@ true because the organization declared it, and stays true until the organization
 declares otherwise. Mixing them gives business truth an expiry date it has no way to
 honour, and gives technical truth an authority it has not earned.
 
-When L2 arrives, exactly one edge will cross between the layers, and it will point
-**upward**: a service *realizes* a capability. Never the reverse, because a capability
-has to survive the deletion of every system that ever delivered it.
+Exactly one edge crosses between the layers, and it points **upward**: a service
+*realizes* a capability. Never the reverse, because a capability has to survive the
+deletion of every system that ever delivered it. It is written in L2, authored by a
+human under review, and no import creates one - a source knows what it contains, not
+what the organization is accountable for.
 
-The boundary is enforced, not merely documented. An L1 entity may carry only
-properties defined by the core or business vocabularies, plus the standard RDF
-annotations. Anything else is rejected with a message saying so
-(`ontology/shapes/biz.ttl`, `shp:L1BoundaryShape`).
+The boundary is enforced, not merely documented, and in three places rather than one.
 
-And it is enforced against the data it is judging, not only against honest data. The
-vocabularies are loaded into named graphs of their own and the shape asks its question
-inside them, so a file cannot grant itself the allowance by declaring a technical term
-to be part of L1. Widening the boundary takes a vocabulary edit, which is a reviewed
+**What an L1 node may say.** An L1 entity may carry only properties defined by the core
+or business vocabularies, plus the standard RDF annotations. Anything else is rejected
+with a message saying so (`ontology/shapes/biz.ttl`, `shp:L1BoundaryShape`) - including
+`tech:realizes` itself, written backwards onto a capability.
+
+**Where it may be said.** Curated business truth is committed under
+`ontology/instances/business/` and observed technical truth under
+`ontology/instances/technical/`. The loader reads each directory into a named graph of
+its own, and a business entity committed as observed truth is rejected on that alone
+(`ontology/shapes/tech.ttl`, `shpt:CuratedFactInTheObservedGraphShape`). Turtle has no
+syntax for naming a graph, so a file cannot claim to be the other layer.
+
+**And it is enforced against the data it is judging, not only against honest data.** The
+vocabularies are loaded into named graphs of their own and the boundary shapes ask their
+question inside them, so a file cannot grant itself an allowance by declaring a technical
+term to be part of L1. Widening the boundary takes a vocabulary edit, which is a reviewed
 change to a small file, and [evolution.md](evolution.md) says what to look for.
 
 ## What the model can be asked
@@ -85,9 +97,16 @@ the model answering a business question fails the build.
 
 ## What is deliberately not here
 
-No technical entities, no freshness or staleness, no execution traces, no runtime
-data, and no real organizational content. `ontology/instances/business/` is where
-curated content lands; it is empty on purpose until the organization's own goals and
-capabilities are authored. Everything under `ontology/instances/fixtures/` is test
-data and is minted in a namespace no curated entity ever uses, so the two can never
-be confused.
+No technical entities, no freshness or staleness, no execution traces, no runtime data,
+and no real organizational content. Freshness in particular belongs to L2 and stops
+there: an L1 statement has no observation behind it, because nobody observed the
+organization deciding what it is accountable for - they wrote it down.
+
+`ontology/instances/business/` is where curated content lands, and it is empty on purpose
+until the organization's own goals and capabilities are authored. L2 now holds a real
+observation of a real repository, and that is not a reason to fill it: nothing about what
+a system contains says what the organization answers for.
+
+Everything under `ontology/instances/fixtures/` is test data and is minted in namespaces
+no curated entity and no accepted observation ever uses, so the two can never be
+confused.

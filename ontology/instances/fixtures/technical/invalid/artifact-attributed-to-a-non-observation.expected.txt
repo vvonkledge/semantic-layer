@@ -1,0 +1,1 @@
+Artifact https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748 is attributed to https://example.org/not-an-observation, which is not an Observation. Provenance points at the act of looking, not at the source and not at another artifact.

@@ -1,0 +1,1 @@
+Source https://semantic-layer.19h09.co/fixture/l2/github/api-github-com states no trust basis with tech:trustBasis. A consumer handed data with no stated basis for believing it has to invent one, and will invent a generous one.

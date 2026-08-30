@@ -1,0 +1,67 @@
+# Accepted L2 truth: what one source was observed to hold at one instant.
+#
+# GENERATED. Do not edit. This file is `just reconcile` run over the captured
+# snapshot committed beside it, and the suite fails if the two disagree. To
+# change what is here, capture a new observation and promote it; see
+# docs/l2-technical-layer.md.
+#
+# source   github at https://api.github.com
+# target   vvonkledge/siana
+# observed 2026-08-30T06:07:15Z
+# snapshot sha256:8ff2a001b1d3668982ca641c0afdea805f500bce206b8458385393423bfd4b32
+
+@prefix biz: <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core: <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://semantic-layer.19h09.co/l2/github/api-github-com>
+    a tech:Source ;
+    rdfs:label "github at https://api.github.com" ;
+    tech:apiRoot "https://api.github.com"^^xsd:anyURI ;
+    tech:provider "github" ;
+    tech:trustBasis "Unauthenticated GET of the public GitHub REST API, captured in full and hashed. It is what GitHub showed an anonymous caller at the observation instant and nothing more: no private repository, no protection rule, no permission and no field this contract does not read. It says what the repository was, never what the organization is accountable for." .
+
+<https://semantic-layer.19h09.co/l2/github/api-github-com/account/121954748>
+    a tech:Account ;
+    rdfs:label "vvonkledge" ;
+    tech:accountLogin "vvonkledge" ;
+    tech:observedIn <https://semantic-layer.19h09.co/l2/github/api-github-com/observation/8ff2a001b1d3668982ca641c0afdea805f500bce206b8458385393423bfd4b32> ;
+    tech:sourceLocalId "121954748" ;
+    tech:webUrl "https://github.com/vvonkledge"^^xsd:anyURI .
+
+<https://semantic-layer.19h09.co/l2/github/api-github-com/branch/1347717349/main>
+    a tech:Branch ;
+    rdfs:label "main" ;
+    tech:branchName "main" ;
+    tech:branchOf <https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349> ;
+    tech:headCommit "558d5f95a97775de2d786eee7ac1f4eb24c2f80f" ;
+    tech:observedIn <https://semantic-layer.19h09.co/l2/github/api-github-com/observation/8ff2a001b1d3668982ca641c0afdea805f500bce206b8458385393423bfd4b32> ;
+    tech:protected "false"^^xsd:boolean ;
+    tech:sourceLocalId "main" .
+
+<https://semantic-layer.19h09.co/l2/github/api-github-com/observation/8ff2a001b1d3668982ca641c0afdea805f500bce206b8458385393423bfd4b32>
+    a tech:Observation ;
+    rdfs:label "vvonkledge/siana observed 2026-08-30T06:07:15Z" ;
+    tech:freshUntil "2026-08-31T06:07:15Z"^^xsd:dateTime ;
+    tech:observationTarget "vvonkledge/siana" ;
+    tech:observedAt "2026-08-30T06:07:15Z"^^xsd:dateTime ;
+    tech:observedFrom <https://semantic-layer.19h09.co/l2/github/api-github-com> ;
+    tech:snapshotDigest "sha256:8ff2a001b1d3668982ca641c0afdea805f500bce206b8458385393423bfd4b32" .
+
+<https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349>
+    a tech:Repository ;
+    rdfs:label "siana" ;
+    tech:archived "false"^^xsd:boolean ;
+    tech:defaultBranch <https://semantic-layer.19h09.co/l2/github/api-github-com/branch/1347717349/main> ;
+    tech:observedIn <https://semantic-layer.19h09.co/l2/github/api-github-com/observation/8ff2a001b1d3668982ca641c0afdea805f500bce206b8458385393423bfd4b32> ;
+    tech:ownedByAccount <https://semantic-layer.19h09.co/l2/github/api-github-com/account/121954748> ;
+    tech:primaryLanguage "Python" ;
+    tech:pushedAt "2026-08-30T05:07:19Z"^^xsd:dateTime ;
+    tech:repositoryPath "vvonkledge/siana" ;
+    tech:sourceLocalId "1347717349" ;
+    tech:visibility "public" ;
+    tech:webUrl "https://github.com/vvonkledge/siana"^^xsd:anyURI .

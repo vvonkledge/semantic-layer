@@ -1,0 +1,1 @@
+Branch https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main names no repository with tech:branchOf. A branch name identifies something only within one repository, so a branch belonging to none identifies nothing.

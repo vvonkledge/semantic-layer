@@ -1,0 +1,1 @@
+Branch https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main points at 558D5F9, which is not a 40-character lower-case SHA-1. An abbreviated or re-cased commit id does not compare equal to the one the source issued, so nothing downstream can match it.

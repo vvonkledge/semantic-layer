@@ -1,0 +1,18 @@
+{
+  "api_root": "https://api.github.com",
+  "artifact_count": 3,
+  "content_bytes": 7698,
+  "content_digest": "sha256:9ef03a7cad12cbedf8189f0e83d3880d7cacdb9cb1d35ea50921b041fb3cd938",
+  "content_media_type": "application/n-triples",
+  "fresh_until": "2026-08-31T06:07:15Z",
+  "graph": "https://semantic-layer.19h09.co/graph/l2-observed",
+  "observation": "https://semantic-layer.19h09.co/l2/github/api-github-com/observation/8ff2a001b1d3668982ca641c0afdea805f500bce206b8458385393423bfd4b32",
+  "observed_at": "2026-08-30T06:07:15Z",
+  "pack_version": 1,
+  "provider": "github",
+  "snapshot_digest": "sha256:8ff2a001b1d3668982ca641c0afdea805f500bce206b8458385393423bfd4b32",
+  "source": "https://semantic-layer.19h09.co/l2/github/api-github-com",
+  "target": "vvonkledge/siana",
+  "trust_basis": "Unauthenticated GET of the public GitHub REST API, captured in full and hashed. It is what GitHub showed an anonymous caller at the observation instant and nothing more: no private repository, no protection rule, no permission and no field this contract does not read. It says what the repository was, never what the organization is accountable for.",
+  "vocabulary_version": "0.1.0"
+}

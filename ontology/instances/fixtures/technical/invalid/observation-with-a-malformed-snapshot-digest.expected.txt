@@ -1,0 +1,1 @@
+Observation https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed carries the snapshot digest sha256:3F786850E387550F, which is not a sha256: digest followed by 64 lower-case hex characters. A digest nothing can recompute in the same spelling verifies nothing.

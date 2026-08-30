@@ -1,0 +1,11 @@
+[
+  {
+    "repository": "https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349",
+    "path": "vvonkledge/siana",
+    "observation": "https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+    "observedAt": "2026-08-30T06:07:15+00:00",
+    "source": "https://semantic-layer.19h09.co/fixture/l2/github/api-github-com",
+    "provider": "github",
+    "trustBasis": "Unauthenticated read of the public GitHub REST API, captured in full and hashed. What GitHub showed an anonymous caller, and nothing about who is accountable for it."
+  }
+]

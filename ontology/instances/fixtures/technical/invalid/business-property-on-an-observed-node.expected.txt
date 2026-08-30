@@ -1,0 +1,1 @@
+L2 node https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748 asserts https://semantic-layer.19h09.co/vocab/biz#ownedBy, which no L2 vocabulary defines. Business facts - goals, capabilities, owners, roles, policies - are declared by the organization and never read out of a system. The one term that crosses is tech:realizes, and it points upward.

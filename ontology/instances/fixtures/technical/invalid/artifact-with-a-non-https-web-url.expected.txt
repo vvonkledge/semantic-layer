@@ -1,0 +1,1 @@
+Artifact https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748 carries the web URL http://github.com/vvonkledge, which is not https. A URL is text the source chose and this layer hands on to a reader, so it is checked rather than believed.

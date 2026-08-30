@@ -1,0 +1,25 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core: <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# The one crossing edge written backwards. tech:realizes points upward, from the
+# thing that decays to the thing that does not, and a capability that names the
+# repository delivering it today cannot survive the deletion of that repository.
+# The L1 boundary refuses it for the general reason: the technical vocabulary is
+# not one an L1 node may draw on, and that is true of the crossing term too.
+
+<https://semantic-layer.19h09.co/fixture/biz/capability/payment-processing>
+    a biz:Capability ;
+    rdfs:label "Payment processing" ;
+    biz:ownedBy <https://semantic-layer.19h09.co/fixture/biz/team/payments> ;
+    tech:realizes <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349> .
+
+<https://semantic-layer.19h09.co/fixture/biz/team/payments>
+    a biz:Team ;
+    rdfs:label "Payments team" .

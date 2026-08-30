@@ -1,0 +1,54 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix core: <https://semantic-layer.19h09.co/vocab/core#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# Where the source says the repository lives, pointed at a branch. This edge is
+# not biz:ownedBy: no Actor and no accountability follow from it either way.
+
+<https://semantic-layer.19h09.co/fixture/l2/github/api-github-com>
+    a tech:Source ;
+    rdfs:label "github at https://api.github.com" ;
+    tech:apiRoot "https://api.github.com"^^xsd:anyURI ;
+    tech:provider "github" ;
+    tech:trustBasis "Unauthenticated read of the public REST API, captured and hashed." .
+
+<https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed>
+    a tech:Observation ;
+    rdfs:label "vvonkledge/siana observed 2026-08-30T06:07:15Z" ;
+    tech:freshUntil "2026-08-31T06:07:15Z"^^xsd:dateTime ;
+    tech:observationTarget "vvonkledge/siana" ;
+    tech:observedAt "2026-08-30T06:07:15Z"^^xsd:dateTime ;
+    tech:observedFrom <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com> ;
+    tech:snapshotDigest "sha256:3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed" .
+
+<https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/account/121954748>
+    a tech:Account ;
+    rdfs:label "vvonkledge" ;
+    tech:accountLogin "vvonkledge" ;
+    tech:observedIn <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed> ;
+    tech:sourceLocalId "121954748" ;
+    tech:webUrl "https://github.com/vvonkledge"^^xsd:anyURI .
+
+<https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349>
+    a tech:Repository ;
+    rdfs:label "siana" ;
+    tech:defaultBranch <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main> ;
+    tech:observedIn <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed> ;
+    tech:ownedByAccount <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main> ;
+    tech:repositoryPath "vvonkledge/siana" ;
+    tech:sourceLocalId "1347717349" .
+
+<https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/branch/1347717349/main>
+    a tech:Branch ;
+    rdfs:label "main" ;
+    tech:branchName "main" ;
+    tech:branchOf <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349> ;
+    tech:headCommit "558d5f95a97775de2d786eee7ac1f4eb24c2f80f" ;
+    tech:observedIn <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed> ;
+    tech:sourceLocalId "main" .

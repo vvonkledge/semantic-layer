@@ -1,0 +1,1 @@
+Repository https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/repository/1347717349 carries more than one tech:repositoryPath. A repository is at one path at a time; a rename rewrites this one rather than adding a second.
