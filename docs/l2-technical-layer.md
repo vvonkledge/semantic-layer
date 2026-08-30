@@ -231,8 +231,16 @@ stays exactly where it is, and stops being fresh on its own schedule.
 ## When a capture fails
 
 Every failure leaves the last accepted observation untouched, and says what stopped it.
-Nothing is written until everything has been read, projected and hashed, and the write
-itself is one atomic replace.
+Nothing is written until everything has been read, projected and hashed, and each write
+is one atomic replace.
+
+A capture writes two files - the snapshot and its digest - and two renames are not one.
+Killed between them, the snapshot is new and the digest still commits the old bytes. That
+pair is refused by name before anything is reconciled, so nothing downstream believes it:
+the accepted graph and the context pack are written by other commands, from a snapshot
+that has already passed that check. Recovery is yours, and it is one of two commands:
+`just capture` again, or `git checkout` the pair - a capture writes into a git working
+tree, so the last accepted observation is still there to return to.
 
 | what happened | what you get |
 |---|---|

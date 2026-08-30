@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from semantic_layer import acquire, github
+from semantic_layer import acquire, github, pack
 
 REPOSITORY = {
     "id": 1347717349,
@@ -249,3 +249,55 @@ def test_a_snapshot_is_written_with_the_digest_that_checks_it(tmp_path, response
     read, checked = github.read_snapshot(path)
     assert checked == digest
     assert read == snapshot
+
+
+@pytest.mark.parametrize("dies_at", [1, 2])
+def test_an_interruption_between_the_snapshot_and_its_digest_is_refused_not_believed(
+    tmp_path, monkeypatch, responses, dies_at
+):
+    """Two renames are not one, so what is guaranteed is that neither half is believed.
+
+    ``write_snapshot`` writes the snapshot and then its digest, each atomically. Killed
+    before the first, both files are still the last accepted observation. Killed between
+    them, the snapshot is new and the digest still commits the old bytes - and that pair
+    is refused by name rather than reconciled, so the accepted graph and the context pack
+    cannot be built from a capture that never finished landing. Recovery is a person's:
+    recapture, or `git checkout` the pair back.
+    """
+    path = tmp_path / "snapshot.json"
+    sidecar = path.with_name("snapshot.json.sha256")
+    accepted = acquire.capture(observed_at="2026-08-30T06:07:15Z", reader=reader(responses))
+    accepted_digest = acquire.write_snapshot(accepted, path)
+
+    later = json.loads(json.dumps(accepted))
+    later["observed_at"] = "2026-08-31T06:07:15Z"
+
+    landed = acquire.write_atomically
+    writes = 0
+
+    def die_on_the_nth_write(target, payload):
+        nonlocal writes
+        writes += 1
+        if writes == dies_at:
+            raise OSError("the machine went away")
+        landed(target, payload)
+
+    monkeypatch.setattr(acquire, "write_atomically", die_on_the_nth_write)
+    with pytest.raises(OSError, match="machine went away"):
+        acquire.write_snapshot(later, path)
+
+    accepted_graph = github.accepted_path().read_bytes()
+    held = pack.read(pack.pack_dir())
+
+    if dies_at == 1:
+        assert github.read_snapshot(path) == (accepted, accepted_digest)
+    else:
+        assert json.loads(path.read_bytes()) == later
+        assert sidecar.read_text(encoding="utf-8").strip() == accepted_digest
+        with pytest.raises(github.ReconcileError, match="Recapture"):
+            github.read_snapshot(path)
+
+    # The half a consumer holds. Nothing downstream of an unfinished capture ran, so
+    # the accepted observation and the pack built from it are exactly where they were.
+    assert github.accepted_path().read_bytes() == accepted_graph
+    assert pack.read(pack.pack_dir()) == held

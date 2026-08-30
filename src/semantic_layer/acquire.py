@@ -12,9 +12,17 @@ what the trust basis it writes down claims.
 Failure is the interesting half. A network error, a rate limit, a 404, malformed JSON,
 a response that has drifted from the contract, or a pagination chain that stops early
 must all leave the last accepted observation exactly as it was. So nothing is written
-until everything has been read, projected and hashed: the write is one atomic replace
-at the end, and every failure before it leaves the working tree untouched and says
-what happened.
+until everything has been read, projected and hashed, and every failure before that
+point leaves the working tree untouched and says what happened.
+
+What is written is two files, and two renames are not one. A capture writes the
+snapshot and then its digest, each atomically, and a process killed between the two
+leaves a new snapshot beside the old digest. That state is not silent and is not
+believed: the pair no longer agrees, ``github.read_snapshot`` refuses it by name
+before anything is reconciled, and the accepted graph and the context pack - which are
+written by other commands, from a snapshot that passed that check - cannot move
+because of it. See ``write_snapshot`` for the contract as it actually stands and for
+the recovery.
 
 There is no promote step in code, because git already is one. A capture lands as an
 uncommitted diff; it becomes accepted L2 truth when that diff is reviewed and merged,
@@ -275,7 +283,21 @@ def write_atomically(path: Path, payload: bytes) -> None:
 
 
 def write_snapshot(snapshot: Mapping, path: Path) -> str:
-    """Commit a captured snapshot to disk with its digest, and return the digest."""
+    """Commit a captured snapshot to disk with its digest, and return the digest.
+
+    Two files, written in one order and each atomically. The pair is not a transaction
+    and this does not claim to be one: two renames cannot be made into one without a
+    second mutable truth - an index, a lock, a journal - and adding one to hold two
+    files honest would be a bigger thing to keep true than the two files are.
+
+    What is guaranteed instead is that no interruption is believed. Killed before the
+    snapshot lands, both files are the last accepted observation and nothing changed.
+    Killed between the two, the snapshot is new and the digest still commits the old
+    bytes, so ``github.read_snapshot`` refuses the pair by name and no reconcile, graph
+    or pack is built from it. Recovery is a person's, and it is one of two commands: run
+    `just capture` again, or `git checkout` the pair - a capture writes into a git
+    working tree, so the last accepted observation is still there to return to.
+    """
     payload = render(snapshot)
     digest = github.digest_of(payload)
     write_atomically(path, payload)

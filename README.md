@@ -123,8 +123,10 @@ to be the other layer.
    changes nothing shows no diff.
 8. Every way a capture can fail leaves the last accepted observation untouched: rate
    limits, refusals, malformed JSON, schema drift, a pagination chain that breaks, and a
-   process that dies mid-write. None of it needs a socket to test, and none of it can
-   have one.
+   process that dies mid-write. A capture writes two files and two renames are not one,
+   so the guarantee across the pair is narrower and stated as such: an interruption
+   between them is refused by name rather than reconciled, and cannot move the accepted
+   graph or the pack. None of it needs a socket to test, and none of it can have one.
 9. A context pack that is stale, tampered with, internally inconsistent, from another
    source or about another target is refused, against an instant the caller supplies
    rather than the clock. Every field the manifest carries is held - against the content,
