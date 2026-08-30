@@ -90,8 +90,8 @@ def _quoted(text: str, *, compact: bool) -> str:
 
     Turtle can hold a newline inside a triple-quoted string and rdflib writes one, which
     is what makes a committed graph readable when a source puts a line break in a
-    description. N-Triples cannot: it is one triple per line, so the same value has to be
-    escaped instead. Handing rdflib's Turtle quoting to an N-Triples writer produces a
+    repository name. N-Triples cannot: it is one triple per line, so the same value has
+    to be escaped instead. Handing rdflib's Turtle quoting to an N-Triples writer produces a
     file that looks fine and that no consumer can parse - which is a thing to find out
     here rather than in somebody else's pipeline.
     """
