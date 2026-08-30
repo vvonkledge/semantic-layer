@@ -263,35 +263,73 @@ def test_the_import_writes_no_crossing_edge(committed):
 ## Refusals, one per way a response can fail to be an answer.
 
 
+#: One entry per way a response can fail to be an answer: what it does to the payload,
+#: and the sentence the reader is owed. The id is the field, so a failure names the
+#: contract line to go and read rather than the phrase it happened to match on.
+NOT_AN_ANSWER = [
+    ("target: absent", lambda s: s.pop("target"), "missing"),
+    ("target: another repository", lambda s: s.update(target="vvonkledge/other"), "locked to"),
+    ("provider: another system", lambda s: s.update(provider="gitlab"), "reads 'github'"),
+    ("snapshot_version: unknown", lambda s: s.update(snapshot_version=2), "another layout"),
+    ("snapshot: a field nobody chose", lambda s: s.update(surprise="?"), "does not read"),
+    (
+        "repository: a field nobody chose",
+        lambda s: s["repository"].update(surprise=1),
+        "does not read",
+    ),
+    ("repository.id: absent", lambda s: s["repository"].pop("id"), "missing"),
+    ("repository.id: null", lambda s: s["repository"].update(id=None), "positive integer"),
+    ("repository.id: zero", lambda s: s["repository"].update(id=0), "positive integer"),
+    ("repository.id: negative", lambda s: s["repository"].update(id=-3), "positive integer"),
+    (
+        "repository.id: a string",
+        lambda s: s["repository"].update(id="1347717349"),
+        "positive integer",
+    ),
+    ("repository.id: a boolean", lambda s: s["repository"].update(id=True), "positive integer"),
+    ("owner.id: null", lambda s: s["repository"]["owner"].update(id=None), "positive integer"),
+    (
+        "repository.html_url: not https",
+        lambda s: s["repository"].update(html_url="http://github.com/vvonkledge/siana"),
+        "https",
+    ),
+    (
+        "repository.pushed_at: a date",
+        lambda s: s["repository"].update(pushed_at="2026-08-30"),
+        "UTC instant",
+    ),
+    (
+        "repository.archived: a string",
+        lambda s: s["repository"].update(archived="false"),
+        "true or false",
+    ),
+    (
+        "repository.default_branch: not in the branch list",
+        lambda s: s["repository"].update(default_branch="trunk"),
+        "do not include it",
+    ),
+    (
+        "branches.complete: false",
+        lambda s: s["branches"].update(complete=False),
+        "did not follow pagination",
+    ),
+    ("branches.complete: absent", lambda s: s["branches"].pop("complete"), "missing"),
+    ("branches.items: not a list", lambda s: s["branches"].update(items={}), "reads a list"),
+    ("freshness_seconds: zero", lambda s: s.update(freshness_seconds=0), "positive integer"),
+    (
+        "observed_at: not an instant",
+        lambda s: s.update(observed_at="2026-08-30 06:07:15"),
+        "UTC instant",
+    ),
+    ("api_root: not https", lambda s: s.update(api_root="http://api.github.com"), "https"),
+    ("trust_basis: empty", lambda s: s.update(trust_basis=""), "non-empty string"),
+]
+
+
 @pytest.mark.parametrize(
     ("mutate", "expected"),
-    [
-        (lambda s: s.pop("target"), "missing"),
-        (lambda s: s.update(target="vvonkledge/semantic-layer"), "locked to"),
-        (lambda s: s.update(provider="gitlab"), "reads 'github'"),
-        (lambda s: s.update(snapshot_version=2), "another layout"),
-        (lambda s: s.update(surprise="a field nobody chose"), "does not read"),
-        (lambda s: s["repository"].update(surprise=1), "does not read"),
-        (lambda s: s["repository"].pop("id"), "missing"),
-        (lambda s: s["repository"].update(id=None), "positive integer"),
-        (lambda s: s["repository"].update(id=0), "positive integer"),
-        (lambda s: s["repository"].update(id=-3), "positive integer"),
-        (lambda s: s["repository"].update(id="1347717349"), "positive integer"),
-        (lambda s: s["repository"].update(id=True), "positive integer"),
-        (lambda s: s["repository"]["owner"].update(id=None), "positive integer"),
-        (lambda s: s["repository"].update(html_url="http://github.com/vvonkledge/siana"), "https"),
-        (lambda s: s["repository"].update(pushed_at="2026-08-30"), "UTC instant"),
-        (lambda s: s["repository"].update(archived="false"), "true or false"),
-        (lambda s: s["repository"].update(default_branch="trunk"), "do not include it"),
-        (lambda s: s["branches"].update(complete=False), "did not follow pagination"),
-        (lambda s: s["branches"].pop("complete"), "missing"),
-        (lambda s: s["branches"].update(items={}), "reads a list"),
-        (lambda s: s.update(freshness_seconds=0), "positive integer"),
-        (lambda s: s.update(observed_at="2026-08-30 06:07:15"), "UTC instant"),
-        (lambda s: s.update(api_root="http://api.github.com"), "https"),
-        (lambda s: s.update(trust_basis=""), "non-empty string"),
-    ],
-    ids=lambda value: value if isinstance(value, str) else "",
+    [entry[1:] for entry in NOT_AN_ANSWER],
+    ids=[entry[0] for entry in NOT_AN_ANSWER],
 )
 def test_a_response_that_is_not_an_answer_is_refused(snapshot, mutate, expected):
     mutate(snapshot)

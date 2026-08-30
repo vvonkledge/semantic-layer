@@ -82,7 +82,7 @@ Reader = Callable[[str], tuple[int, Mapping[str, str], bytes]]
 
 def read_url(url: str) -> tuple[int, Mapping[str, str], bytes]:
     """One GET, with no credential and no way to attach one."""
-    request = urllib.request.Request(  # noqa: S310 - https is enforced below
+    request = urllib.request.Request(
         url,
         method="GET",
         headers={
@@ -91,10 +91,13 @@ def read_url(url: str) -> tuple[int, Mapping[str, str], bytes]:
             "User-Agent": USER_AGENT,
         },
     )
+    # Checked before the request is opened, not after it is built: every URL here is
+    # constructed from the locked target or read from GitHub's own pagination header,
+    # and this is what stops either of those becoming a file: or an http: read.
     if request.type != "https":
         raise AcquisitionError(f"{url} is not an https URL")
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+        with urllib.request.urlopen(request, timeout=30) as response:
             return response.status, dict(response.headers), response.read()
     except urllib.error.HTTPError as error:
         return error.code, dict(error.headers or {}), error.read()

@@ -231,8 +231,7 @@ def _collection(payload: Mapping, key: str, where: str) -> list:
             f"end, so this collection is a prefix of the answer and not the answer. Recapture "
             f"rather than reconcile a partial collection into an authoritative one."
         )
-    if _positive_integer(block, "pages", f"{where}.{key}") < 1:
-        raise ReconcileError(f"{where}.{key}.pages is {_show(block['pages'])}")
+    _positive_integer(block, "pages", f"{where}.{key}")
     items = block["items"]
     if not isinstance(items, list):
         raise ReconcileError(
@@ -305,6 +304,13 @@ class _Reconciliation:
         self.digest = digest
         self.fixture = fixture
         self.graph = graph
+        # Read once, in run(), before anything is minted. They are the scope every
+        # identifier below is minted under, and the two facts the branches need from
+        # the repository, so they are declared here rather than appearing halfway down.
+        self.provider = ""
+        self.instance = ""
+        self.repository_id = 0
+        self.default_branch = ""
 
     def run(self) -> None:
         self._check_version()
@@ -324,10 +330,11 @@ class _Reconciliation:
                 f"source rather than by widening this one."
             )
 
+        payload = _object(self.snapshot["repository"], REPOSITORY_FIELDS, "snapshot.repository")
         source = self._source()
         observation = self._observation(source)
-        account = self._account(observation)
-        repository = self._repository(observation, account)
+        account = self._account(observation, payload)
+        repository = self._repository(observation, account, payload)
         self._branches(observation, repository)
 
     def _check_version(self) -> None:
@@ -387,8 +394,7 @@ class _Reconciliation:
         self._add(iri, "observationTarget", Literal(self.snapshot["target"]))
         return iri
 
-    def _account(self, observation: URIRef) -> URIRef:
-        repository = _object(self.snapshot["repository"], REPOSITORY_FIELDS, "snapshot.repository")
+    def _account(self, observation: URIRef, repository: Mapping) -> URIRef:
         owner = _object(repository["owner"], OWNER_FIELDS, "snapshot.repository.owner")
         account_id = _positive_integer(owner, "id", "snapshot.repository.owner")
         login = _string(owner, "login", "snapshot.repository.owner")
@@ -405,8 +411,7 @@ class _Reconciliation:
         )
         return iri
 
-    def _repository(self, observation: URIRef, account: URIRef) -> URIRef:
-        payload = self.snapshot["repository"]
+    def _repository(self, observation: URIRef, account: URIRef, payload: Mapping) -> URIRef:
         where = "snapshot.repository"
         self.repository_id = _positive_integer(payload, "id", where)
         self.default_branch = _string(payload, "default_branch", where)

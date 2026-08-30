@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from rdflib import Graph, URIRef
@@ -146,10 +146,17 @@ def _instant(subgraph: Graph, subject: URIRef, predicate: URIRef, what: str) -> 
     and this repository does not, so it commits to one spelling and writes it.
     """
     value = str(_one(subgraph, subject, predicate, what))
-    stamped = datetime.fromisoformat(value).strftime(INSTANT_FORMAT)
-    if not INSTANT_PATTERN.fullmatch(stamped):
-        raise PackError(f"{subject} has {what} of {value!r}, which is not a UTC instant")
-    return stamped
+    try:
+        stamped = datetime.fromisoformat(value)
+    except ValueError as error:
+        raise PackError(f"{subject} has {what} of {value!r}, which is not an instant") from error
+    if stamped.tzinfo is None:
+        raise PackError(
+            f"{subject} has {what} of {value!r}, which names no timezone. An instant with no "
+            f"offset means something different to every reader, and a pack is read by people "
+            f"this repository never meets."
+        )
+    return stamped.astimezone(UTC).strftime(INSTANT_FORMAT)
 
 
 def verify(
