@@ -49,6 +49,15 @@ SPAN_ID_PATTERN = re.compile(r"[0-9a-f]{16}")
 NAME_PATTERN = ids.SLUG_PATTERN
 NAME_MAX_LENGTH = 64
 
+#: The longest a reference to another layer may be. It is the bound the store's IRI
+#: columns carry, stated here because this is the layer that has to enforce it: an L2
+#: identifier percent-encodes whatever a source named a thing, so a legal branch name
+#: of a couple of hundred characters - or a much shorter accented one, where every
+#: character costs six once encoded - mints an identifier past the column's CHECK. A
+#: rule that lived only in SQL would surface as an integrity error from inside a
+#: transaction, which is neither a ``TraceError`` nor a sentence naming what to fix.
+IRI_MAX_LENGTH = 300
+
 #: The OpenTelemetry span kinds, and its status set.
 SPAN_KINDS = ("internal", "server", "client", "producer", "consumer")
 SPAN_STATUSES = ("unset", "ok", "error")
@@ -210,6 +219,49 @@ def _interval(started_at: str, ended_at: str, what: str) -> None:
         )
 
 
+def _inside(started_at: str, ended_at: str, run: tuple[str, str], what: str) -> None:
+    """One span's interval, held inside its run's.
+
+    A span is an operation that happened *during* the run, so the run's interval bounds
+    every span it records. Without the rule a twelve-second run in 2026 records a span
+    dated 2020 without complaint: evidence that contradicts itself and cannot be put on
+    a timeline, which is most of what a trace is read for. The bound is inclusive at
+    both ends, because that is the ordinary case rather than an edge one - a run's first
+    span begins when the run begins and its last ends when the run ends.
+    """
+    run_started, run_ended = run
+    if started_at < run_started or ended_at > run_ended:
+        raise TraceError(
+            f"{what} ran from {started_at} to {ended_at}, which is outside the run's own "
+            f"{run_started} to {run_ended}. A span records something that happened inside "
+            f"the run, so the run's interval bounds it; a span reaching outside belongs to "
+            f"another run, or to a clock that disagrees with the one that timed this one. "
+            f"The bound is inclusive: a span sharing the run's exact start or end is inside."
+        )
+
+
+def _bounded(text: str, what: str) -> str:
+    """One minted identifier, refused unless the store has room to record it.
+
+    The bound is the store's, and it is checked here because here is where a refusal is
+    still useful. An L2 identifier carries whatever a source named a thing, percent-
+    encoded: a legal Git branch name of a couple of hundred characters mints an IRI past
+    the column's CHECK, and so does a much shorter one written in a language with
+    accents, where each of them costs six characters once encoded. Left to SQL, that
+    arrives as an ``sqlite3.IntegrityError`` naming a column, raised from inside the
+    transaction, and a caller catching the documented ``TraceError`` never sees it.
+    """
+    if len(text) > IRI_MAX_LENGTH:
+        raise TraceError(
+            f"{what} is {len(text)} characters, and this records at most {IRI_MAX_LENGTH}: "
+            f"{text[:80]}... The identifier is well formed; it is the name inside it that is "
+            f"too long, which is what a very long branch name or a heavily percent-encoded "
+            f"one produces. Shorten the name the source knows the thing by, or point the "
+            f"trace at the entity that contains it."
+        )
+    return text
+
+
 def reference(value, what: str) -> str:
     """One reference to another layer, refused unless this layer minted it.
 
@@ -225,7 +277,7 @@ def reference(value, what: str) -> str:
             parse(text)
         except ids.IdentifierError:
             continue
-        return text
+        return _bounded(text, what)
     raise TraceError(
         f"{what} is {text!r}, which is not an identifier this layer mints. A trace points at "
         f"L1 and L2 nodes by their minted identifiers and at nothing else: anything that "
@@ -250,7 +302,7 @@ def _agent(value: str) -> str:
             f"agent identity. Only an agent identity can be associated with a run; who is "
             f"accountable for it is reached through that identity in L1, not asserted here."
         )
-    return text
+    return _bounded(text, "the run's agent")
 
 
 def _sequence(value, what: str) -> tuple:
@@ -259,7 +311,7 @@ def _sequence(value, what: str) -> tuple:
     return tuple(value)
 
 
-def _spans(run: Run) -> tuple[Span, ...]:
+def _spans(run: Run, interval: tuple[str, str]) -> tuple[Span, ...]:
     spans = _sequence(run.spans, "the run's spans")
     if not spans:
         raise TraceError(
@@ -286,6 +338,7 @@ def _spans(run: Run) -> tuple[Span, ...]:
         started = instant(span.started_at, f"span {span_id}'s start")
         ended = instant(span.ended_at, f"span {span_id}'s end")
         _interval(started, ended, f"span {span_id}")
+        _inside(started, ended, interval, f"span {span_id}")
         for value in _sequence(span.touched, f"span {span_id}'s references"):
             reference(value, f"a node span {span_id} touched")
 
@@ -419,7 +472,7 @@ def validate(run: Run) -> Validated:
         started_at=started_at,
         ended_at=ended_at,
         outcome=_one_of(run.outcome, OUTCOME_STATUSES, "the run's outcome"),
-        spans=_spans(run),
+        spans=_spans(run, (started_at, ended_at)),
         metrics=_metrics(run),
         findings=_findings(run),
         agent=None if run.agent is None else _agent(run.agent),

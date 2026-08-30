@@ -26,7 +26,7 @@ from trace_runs import (
 from semantic_layer import ids
 from semantic_layer import pack as packs
 from semantic_layer.github import digest_of
-from semantic_layer.trace import Finding, Metric, TraceError, TraceStore
+from semantic_layer.trace import Finding, Metric, TraceError, TraceStore, model
 from semantic_layer.trace import store as store_module
 
 
@@ -279,6 +279,160 @@ def test_a_run_is_not_a_dict_of_whatever_the_runtime_had(store, accepted_pack):
     with pytest.raises(TraceError, match="records a Run"):
         record(store, {"trace_id": TRACE_ID}, accepted_pack)
     assert _empty(store)
+
+
+## Exact bounds: how long a reference may be, and where a span may lie.
+
+
+def _branch(name: str) -> str:
+    """The identifier a branch of the observed repository mints, for whatever it is called."""
+    return ids.mint_observed("github", "api-github-com", "branch", "1347717349", name)
+
+
+#: How many characters of branch name an identifier still has room for. Derived rather
+#: than written down, so the boundary stays exact if the base or the scope ever changes.
+BRANCH_ROOM = model.IRI_MAX_LENGTH - len(_branch("x")) + 1
+AGENT_ROOM = model.IRI_MAX_LENGTH - len(ids.mint("agent", "a")) + 1
+
+#: An accented character costs six characters once percent-encoded, which is how a
+#: branch name far shorter than the ASCII limit still mints an identifier past it.
+ACCENTED_FITS = "é" * (BRANCH_ROOM // 6)
+ACCENTED_OVERFLOWS = "é" * (BRANCH_ROOM // 6 + 1)
+
+TOO_LONG = [
+    (
+        "a branch name long enough to mint past the bound",
+        with_spans(span(touched=[_branch("b" * (BRANCH_ROOM + 1))])),
+    ),
+    (
+        "a branch name whose accents expand past it",
+        with_spans(span(touched=[_branch(ACCENTED_OVERFLOWS)])),
+    ),
+    (
+        "a finding about a branch with a name that long",
+        run(findings=[Finding("branch-moved", "warning", about=_branch("b" * (BRANCH_ROOM + 1)))]),
+    ),
+    ("an agent identity that long", run(agent=ids.mint("agent", "a" * (AGENT_ROOM + 1)))),
+]
+
+
+@pytest.mark.parametrize(("what", "bad_run"), TOO_LONG, ids=[what for what, _ in TOO_LONG])
+def test_a_reference_too_long_for_the_store_is_refused_before_the_store(
+    store, accepted_pack, what, bad_run
+):
+    """As a TraceError, which is the type the documentation tells a caller to catch.
+
+    The bound is the store's column, and until it was checked here it was *only* the
+    store's column: the identifier parsed, the run validated, and the refusal arrived
+    from inside the transaction as an sqlite3.IntegrityError naming a CHECK constraint.
+    That is not a subclass of TraceError, so a caller catching what the documentation
+    told them to catch did not catch it, and what they got named a column rather than
+    the branch name that was too long.
+    """
+    with pytest.raises(TraceError) as refusal:
+        record(store, bad_run, accepted_pack)
+
+    assert not isinstance(refusal.value, sqlite3.IntegrityError)
+    assert str(model.IRI_MAX_LENGTH) in str(refusal.value)
+    assert _empty(store), what
+
+
+ACCEPTED = [
+    (
+        "the longest branch name that still fits",
+        with_spans(span(touched=[_branch("b" * BRANCH_ROOM)])),
+        _branch("b" * BRANCH_ROOM),
+    ),
+    (
+        "the longest accented one that still fits",
+        with_spans(span(touched=[_branch(ACCENTED_FITS)])),
+        _branch(ACCENTED_FITS),
+    ),
+    (
+        "the longest agent identity that fits",
+        run(agent=ids.mint("agent", "a" * AGENT_ROOM)),
+        ids.mint("agent", "a" * AGENT_ROOM),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("what", "good_run", "expected"), ACCEPTED, ids=[what for what, _, _ in ACCEPTED]
+)
+def test_a_reference_at_the_greatest_length_the_store_holds_is_recorded(
+    store, accepted_pack, what, good_run, expected
+):
+    """The other side of the boundary, which is what says the two bounds agree.
+
+    A writer stricter than its column would refuse identifiers the store has room for,
+    and nothing but recording one and reading it back distinguishes that from a bound
+    that is exactly right. Two of these are exactly at it; the accented one is as close
+    as six-character characters get, which is the shape a real overflow arrives in.
+    """
+    assert len(expected) <= model.IRI_MAX_LENGTH
+    record(store, good_run, accepted_pack)
+
+    recorded = store.read(TRACE_ID)
+    written = {iri for a_span in recorded.run.spans for iri in a_span.touched}
+    assert expected in written | {recorded.run.agent}, what
+
+
+def test_the_writers_bound_is_the_stores_own(store, accepted_pack):
+    """One number, or the writer refuses what the column holds and nobody notices."""
+    assert store_module.IRI_MAX_LENGTH is model.IRI_MAX_LENGTH
+    assert len(_branch("b" * BRANCH_ROOM)) == model.IRI_MAX_LENGTH
+    assert len(ids.mint("agent", "a" * AGENT_ROOM)) == model.IRI_MAX_LENGTH
+
+
+OUTSIDE_THE_RUN = [
+    (
+        "a span that began before the run did",
+        with_spans(span(started_at="2026-08-30T08:59:59Z")),
+    ),
+    (
+        "a span that ended after the run did",
+        with_spans(span(ended_at="2026-08-30T09:00:13Z")),
+    ),
+    (
+        "a span from another day entirely",
+        with_spans(span(started_at="2020-01-01T00:00:00Z", ended_at="2020-01-01T00:00:02Z")),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("what", "bad_run"), OUTSIDE_THE_RUN, ids=[what for what, _ in OUTSIDE_THE_RUN]
+)
+def test_a_span_outside_its_run_is_refused_and_writes_nothing(store, accepted_pack, what, bad_run):
+    """A run's interval bounds every span it records, and nothing checked that.
+
+    The run this suite uses is twelve seconds long in 2026 and would happily have
+    recorded a span dated 2020. Retention is keyed off the run rather than the span, so
+    it was never a hole in the ninety days - it is evidence that cannot be put on a
+    timeline, which is the thing a trace is for.
+    """
+    with pytest.raises(TraceError) as refusal:
+        record(store, bad_run, accepted_pack)
+
+    message = str(refusal.value)
+    assert run().started_at in message and run().ended_at in message, "names the run's interval"
+    assert bad_run.spans[0].started_at in message, "names the span's"
+    assert _empty(store), what
+
+
+def test_a_span_sharing_the_runs_exact_start_or_end_is_inside_it(store, accepted_pack):
+    """The bound is inclusive, which is not a detail: it is the ordinary case.
+
+    A run's first span begins when the run begins and its last ends when the run ends,
+    so an exclusive bound would refuse almost every real run.
+    """
+    record(
+        store,
+        with_spans(span(started_at=run().started_at, ended_at=run().ended_at)),
+        accepted_pack,
+    )
+
+    assert store.trace_ids() == (TRACE_ID,)
 
 
 ## Replay.

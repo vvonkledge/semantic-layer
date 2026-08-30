@@ -1,15 +1,21 @@
 """Append-only, and the one narrow way anything ever leaves.
 
 Two claims, and they pull against each other, which is why both are tested here rather
-than in separate files. Recorded evidence is never edited or selectively removed - not
-by this library, and not by whoever opens the file with a SQLite shell. And full span
-detail is removed after ninety days, because keeping the detail of every run a fleet
-ever made is a liability nobody signed up for.
+than in separate files. Recorded evidence is never edited or selectively removed through
+the supported API, and an ordinary UPDATE or DELETE typed straight at the file is
+refused by SQLite too. And full span detail is removed after ninety days, because
+keeping the detail of every run a fleet ever made is a liability nobody signed up for.
 
 The boundary between them is where the mistakes live, so it is tested at the instant
 itself and on both sides of it. Every instant here is supplied rather than read from the
 clock: a retention policy that consults the wall clock answers a different question
 every time it runs, and its boundary can be argued about but never demonstrated.
+
+The two halves are also tested apart, under "who owns which rule" below, because they
+are easy to read as one guarantee and they are not one. ``expire_spans`` owns the ninety
+days; the triggers own append-only and bound a pass to the horizon it declared. The
+tests that pin what the triggers do *not* do are as deliberate as the ones that pin what
+they do: they are what makes a future sentence claiming more than this visibly false.
 """
 
 import sqlite3
@@ -18,8 +24,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from trace_runs import AS_OF, TRACE_ID, run, span
 
+from semantic_layer import graph
 from semantic_layer.github import INSTANT_FORMAT
 from semantic_layer.trace import RETENTION_DAYS, TraceError, TraceStore, retention_horizon
+from semantic_layer.trace import store as trace_store
 
 #: The run under test ends here, and every instant below is measured from it.
 ENDED_AT = run().ended_at
@@ -147,12 +155,13 @@ def test_a_replay_of_a_run_whose_detail_expired_is_refused(recorded, accepted_pa
     ],
 )
 def test_recorded_evidence_cannot_be_edited_even_with_raw_sql(recorded, table, statement):
-    """The guarantee is a trigger and not a rule this library follows.
+    """The guarantee is a trigger and not only a rule this library follows.
 
-    A guarantee that only holds while everyone uses the front door is not a guarantee
-    about an append-only history: the whole value of one is that a record written last
-    year still says what it said. So the refusal is in the schema, where a SQLite shell
-    meets it too.
+    A guarantee that holds while everyone uses the front door and nowhere else is not
+    much of a guarantee about an append-only history: the whole value of one is that a
+    record written last year still says what it said. So the refusal is in the schema,
+    where an ordinary statement typed at a SQLite shell meets it too. What that does not
+    reach is the file's owner, who can drop the trigger; see the trust boundary below.
     """
     recorded.expire_spans(as_of=_plus(BOUNDARY, seconds=1))
     with pytest.raises(sqlite3.IntegrityError, match="append-only"):
@@ -171,12 +180,17 @@ def test_span_detail_cannot_be_deleted_outside_a_retention_pass(recorded):
     assert _spans(recorded) == 2
 
 
-def test_a_retention_pass_cannot_take_a_span_that_is_not_old_enough(recorded):
-    """The trigger reads the horizon itself rather than trusting the code driving it.
+def test_a_retention_pass_cannot_delete_past_the_horizon_it_declared(recorded):
+    """The trigger holds a pass to the horizon that pass wrote down, and to nothing else.
 
-    This is the failure the whole arrangement exists for: a pass with a horizon
-    computed one unit wrong would otherwise remove a run that is still inside the
-    window, and there would be nothing left to notice it with.
+    This is what the guard is for and the whole of what it is for: a delete loop that
+    selected one horizon and then reached further than it - by a bug in the loop, by a
+    second caller, by a hand-written statement - is refused by the database rather than
+    by whoever reviews the loop next. The horizon here is the run's own ``ended_at``,
+    which the policy treats as too young to expire, so the comparison is not vacuous.
+
+    It is not a check on the ninety days. See the two tests below for what this cannot
+    do, which is the half a reader is most likely to assume it covers.
     """
     connection = recorded._connection
     connection.execute("INSERT INTO retention_pass (horizon) VALUES (?)", (ENDED_AT,))
@@ -184,6 +198,87 @@ def test_a_retention_pass_cannot_take_a_span_that_is_not_old_enough(recorded):
         connection.execute("DELETE FROM span")
     connection.execute("DELETE FROM retention_pass")
     assert _spans(recorded) == 2
+
+
+## Who owns which rule, and where the trust boundary is.
+#
+# The two mechanisms above are easy to read as one guarantee, and they are not one. The
+# ninety days are computed in Python by `expire_spans`; the triggers enforce append-only
+# and hold a pass to the horizon it declared. Everything below pins what the triggers
+# cannot do, on purpose: an assertion that a mechanism has a limit is the only thing that
+# keeps a later sentence from quietly claiming it does not.
+
+
+def test_the_ninety_days_are_the_apis_arithmetic_and_the_trigger_never_checks_them(
+    recorded, monkeypatch
+):
+    """Change the policy and the policy changes; nothing underneath disagrees.
+
+    `RETENTION_DAYS` is patched to one day and a two-day-old run expires - under the
+    real policy it has eighty-eight days left. The trigger permits every delete, because
+    the horizon it compares against is the one this pass computed and declared, and it
+    has no independent notion of ninety days: it is never told `as_of` and has no clock
+    to derive one from.
+
+    This is committed as a test rather than left implicit because it is exactly what a
+    reader assumes the trigger covers. It does not. What the trigger still holds is its
+    own lane: the pass removes span detail and nothing else, and the rollups a run is
+    judged by survive a policy computed wrongly.
+    """
+    monkeypatch.setattr("semantic_layer.trace.store.RETENTION_DAYS", 1)
+
+    assert recorded.expire_spans(as_of=_plus(ENDED_AT, days=2)) == (TRACE_ID,)
+
+    assert _spans(recorded) == 0
+    after = recorded.read(TRACE_ID)
+    assert after.run.metrics and after.run.findings and after.pack.identity
+
+
+def test_a_horizon_forged_at_a_sqlite_shell_takes_the_span_detail(recorded):
+    """The trust boundary, written down as the two statements that cross it.
+
+    `retention_pass` carries no trigger and no bound on what may be written to it, so
+    whoever owns the file can declare any horizon and then delete behind it. That is not
+    a defect to be plugged: a store is a file on a disk, its owner can drop a trigger or
+    rewrite the schema or delete the file outright, and a local database cannot defend
+    itself against its own owner.
+
+    What is worth pinning is the shape of the boundary. The forged pass reaches the span
+    detail, which is the one thing a pass is ever allowed to remove; the run, its metrics
+    and its findings are still refused, because the triggers on those tables take no
+    argument and there is nothing to forge.
+    """
+    connection = recorded._connection
+    connection.execute("INSERT INTO retention_pass (horizon) VALUES ('2099-01-01T00:00:00Z')")
+    connection.execute("DELETE FROM span_reference")
+    connection.execute("DELETE FROM span")
+
+    assert _spans(recorded) == 0
+    for still_refused in ("DELETE FROM run", "DELETE FROM metric", "UPDATE finding SET code = 'x'"):
+        with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+            connection.execute(still_refused)
+
+
+def test_the_trust_boundary_is_stated_wherever_the_guarantee_is(store):
+    """The two tests above are only useful if a reader is pointed at them.
+
+    An earlier draft of this slice carried five separate sentences saying the trigger
+    checked the ninety days, which it never did, and what let them all through is that
+    each read plausibly on its own. So the boundary is asserted where the guarantee is
+    made: in the module a reader lands in, in the method they call, and in the document
+    they are sent to.
+
+    A test cannot prove the absence of an overstatement. What it can do is make deleting
+    the correction a failing build, which is the mutation that produced the original
+    defect.
+    """
+    stated = (
+        (trace_store.__doc__ or "")
+        + (trace_store.TraceStore.expire_spans.__doc__ or "")
+        + (graph.ROOT / "docs" / "l3-execution-trace.md").read_text()
+    )
+    for phrase in ("cannot check the ninety days", "cannot defend itself", "declared horizon"):
+        assert phrase in stated, phrase
 
 
 def test_a_second_run_inside_the_window_is_untouched_by_a_pass_for_the_first(store, accepted_pack):

@@ -158,8 +158,11 @@ representation instead, in three places:
 3. **The store refuses one too.** Every table is `STRICT`, so a column typed `TEXT`
    rejects a blob rather than storing it, and every text column carries a `CHECK` that
    bounds its length and its alphabet or names the closed set it comes from. That second
-   wall is for whoever reaches past this library with a SQLite connection - a migration
-   script, a later version of this code, a person at a shell.
+   wall is for whoever reaches past this library with an ordinary SQLite connection - a
+   migration script, a later version of this code, a person typing an `INSERT` at a
+   shell. It is a wall against a mistake, not against the file's owner, who can drop the
+   constraint as easily as write past it; see [the trust
+   boundary](#what-holds-and-against-whom).
 
 `tests/test_trace_privacy.py` offers a prompt, a tool call, an HTTP body, five kilobytes
 of text and a blob to every field that takes text, and then writes each of them straight
@@ -167,10 +170,11 @@ at the database.
 
 ## Append-only, and the one way out
 
-Recorded evidence is never edited. Not by this library, and not by anybody else: the
-refusal is a trigger in the schema rather than a rule this module follows, because a
-guarantee that only holds while everyone uses the front door is not a guarantee about a
-history at all.
+Recorded evidence is never edited. The supported API has no update and no delete, and
+the refusal is also a trigger in the schema rather than only a rule this module follows,
+because a guarantee that holds while everyone uses the front door and nowhere else is
+not much of a guarantee about a history. An `UPDATE run`, a `DELETE FROM metric` or a
+`DELETE FROM span` typed straight at the file is refused by SQLite.
 
 A run is also written whole or not written. Validation and pack verification both
 complete before the transaction opens, and the transaction writes the run, its spans,
@@ -211,6 +215,42 @@ policy that produced it.
 A run whose detail has expired cannot be replayed. Writing the spans back would undo the
 removal, and accepting the replay unchecked would let a different run inherit a recorded
 run's identifier.
+
+## What holds, and against whom
+
+Two mechanisms are doing different jobs here, and reading them as one produces a
+guarantee nobody has.
+
+**The ninety days are the API's.** `expire_spans(as_of=...)` computes the horizon as
+`as_of` minus `RETENTION_DAYS`, selects the runs that ended strictly before it, and
+deletes their span detail. That arithmetic lives in Python, in one function
+(`retention_horizon`), and nothing downstream re-derives it or checks it. Change
+`RETENTION_DAYS` and the policy changes, which is the point: it is a policy, and it is
+meant to be changed on purpose and in one place.
+
+**The triggers are narrower, and they are not the policy.** SQLite refuses `UPDATE` and
+`DELETE` on `run`, `metric`, `finding` and `span_expiry` outright, and refuses `UPDATE`
+on `span` and `span_reference`. Span detail may be deleted only while a retention pass
+is open, and only for a run that ended before the horizon that pass *declared*. That
+bounds the delete loop to what it said it was doing - a loop that selected one horizon
+and then tried to delete past it is refused by the database - and it refuses a delete by
+anything that is not driving a pass at all. It cannot check the ninety days: the trigger
+is never told `as_of`, has no clock, and compares the run against the number it was
+handed.
+
+**So a caller that declares a dishonest horizon gets it.** Patch `RETENTION_DAYS` to one
+day and a two-day-old run expires. Insert a horizon of 2099 into `retention_pass` from a
+SQLite shell and every span in the file can be deleted. Both are demonstrated in
+`tests/test_trace_retention.py`, committed as tests rather than left as surprises,
+because a boundary that is written down is a boundary somebody can reason about and a
+boundary that is only implied is one somebody trips over.
+
+That is not a hole to be plugged. A store is a file on a disk, and its owner can drop a
+trigger, rewrite the schema, or delete the file. **A local SQLite database cannot defend
+itself against whoever owns it, and nothing here claims otherwise.** What the schema
+buys is defence in depth against the ordinary failures - this library growing an edit
+path, a later version of it deleting more than it meant to, a migration script, somebody
+at a shell reaching for `UPDATE` - and that is worth having on its own terms.
 
 ## The PROV summary
 
@@ -270,6 +310,21 @@ sentence naming what to fix, because the caller is standing there with the run i
 hand and is the only one who can. The shapes state what a summary must carry to be
 readable at all by somebody who has only the graph and no reason to trust whoever
 produced it.
+
+Two of the writer's rules are worth naming, because both are the kind of rule that only
+shows up once something real is being recorded:
+
+- **Every span lies inside its run.** A span records something that happened during the
+  run, so the run's interval bounds it, inclusive at both ends: the first span shares the
+  run's start and the last shares its end. Without the rule a twelve-second run in 2026
+  could carry a span dated 2020, which is evidence that cannot be put on a timeline.
+- **Every reference fits the column that records it.** An L2 identifier percent-encodes
+  whatever a source called a thing, so a legal Git branch name of a couple of hundred
+  characters - or a much shorter one written with accents, where each costs six
+  characters once encoded - mints an identifier past the store's 300-character bound.
+  That is refused by the writer, as a `TraceError` naming the length and what to do about
+  it, rather than surfacing from inside the transaction as a SQLite integrity error
+  naming a column. The same holds for the agent identity a run is associated with.
 
 ## Identifiers
 

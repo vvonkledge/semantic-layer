@@ -13,11 +13,23 @@ verified against the real verifier, and only then does one transaction write the
 its spans, its references and its rollups. A write that fails at the ninth span leaves
 no trace of the first eight.
 
-**Nothing is ever changed.** Every table refuses UPDATE and DELETE by trigger, not by
-convention, so a caller reaching past this module with raw SQL is refused too. The one
-exception is span detail under a retention pass, and the trigger that allows it checks
-the horizon itself: a pass cannot remove a span whose run ended at or after the
-horizon, whatever the code driving it believes.
+**Nothing is changed through the supported API, and ordinary SQL is refused too.**
+There is no update and no selective delete on this class, and every table also refuses
+UPDATE and DELETE by trigger, so a caller reaching past this module with an
+``UPDATE run`` or a ``DELETE FROM span`` is refused rather than trusted. The one
+opening is span detail under a retention pass: ``expire_spans`` declares the horizon it
+selected, and the trigger holds the delete loop to it, refusing a span whose run ended
+at or after the horizon that was declared.
+
+Read that guard for what it is. It is defence in depth against this module's own
+delete loop reaching further than the horizon it computed, and against direct edits by
+anything that is not driving a pass. It is **not** a check on the ninety-day policy -
+the arithmetic lives in ``retention_horizon`` and the trigger never sees ``as_of`` - and
+it is not security against whoever owns the file. Somebody at a SQLite shell can insert
+a horizon of their choosing into ``retention_pass``, or drop the triggers, or delete the
+file; a local database cannot defend itself from its owner, and nothing here pretends
+otherwise. What is guaranteed is stated in ``expire_spans`` and in
+docs/l3-execution-trace.md, with the boundary drawn in the same place.
 
 **Nothing here can hold a payload.** Every table is STRICT, so a column typed TEXT
 refuses a blob rather than storing one; every text column carries a CHECK that bounds
@@ -71,10 +83,12 @@ INSTANT_LENGTH = 20
 #: How long a 'sha256:' digest is.
 DIGEST_LENGTH = 71
 
-#: The longest an identifier this layer minted can be, and the prefix every one of
-#: them starts with. Both are bounds on what a reference column can hold: an IRI is
-#: the only kind of text that reaches one, and this is what stops it being any other.
-IRI_MAX_LENGTH = 300
+#: The prefix every identifier this layer records starts with, and the bound on how
+#: long one may be. Both are bounds on what a reference column can hold: an IRI is the
+#: only kind of text that reaches one, and this is what stops it being any other. The
+#: length is ``model``'s, so the column and the validation that runs before it cannot
+#: drift apart and leave a value the writer accepts and the schema refuses.
+IRI_MAX_LENGTH = model.IRI_MAX_LENGTH
 IRI_PREFIX = ids.BASE
 
 
@@ -153,17 +167,22 @@ CREATE TABLE span_expiry (
 ) STRICT;
 
 -- Not evidence, and the only mutable table here: one row exists for the duration of a
--- retention pass and names the horizon that pass is allowed to remove behind. The
--- trigger below reads it rather than trusting the code driving the pass, so a horizon
--- computed wrongly cannot take a span that is not old enough.
+-- retention pass and names the horizon that pass declared. The trigger below reads the
+-- declared horizon rather than the loop's intent, so the pass cannot delete past what
+-- it said it was deleting. It does not re-derive ninety days from anything - it has no
+-- clock and never sees `as_of` - so a caller that declares a dishonest horizon gets the
+-- horizon it declared. That is the trust boundary, and it is written down rather than
+-- papered over: see this module's docstring.
 CREATE TABLE retention_pass (
     horizon TEXT NOT NULL CHECK (length(horizon) = {INSTANT_LENGTH})
 ) STRICT;
 """
 
 #: What the append-only guarantee is, written as triggers rather than as a rule this
-#: module follows. Recorded evidence is never edited: not by this code, not by a later
-#: version of it, and not by whoever opens the file with a SQLite shell.
+#: module follows. Recorded evidence is not edited by this code, by a later version of
+#: it, or by an ordinary UPDATE or DELETE from a SQLite shell - which is the reach a
+#: trigger has. It is not a defence against whoever owns the file and can drop the
+#: trigger; see this module's docstring for where that line is drawn.
 _IMMUTABLE = ("run", "metric", "finding", "span_expiry")
 
 _APPEND_ONLY = "".join(
@@ -204,6 +223,11 @@ def retention_horizon(as_of: str) -> str:
     question every time it runs, so the boundary it draws can be argued about but never
     demonstrated. A span expires when its run ended strictly before this instant, so a
     run of exactly the retention age is kept and the boundary belongs to the data.
+
+    This is the only place ``RETENTION_DAYS`` is applied. Nothing downstream re-derives
+    it: the store records the answer this function gave and enforces deletion against
+    that, so an error here is an error everywhere, which is why it is a function of one
+    argument that can be called and compared on its own.
     """
     if not isinstance(as_of, str):
         raise TraceError(f"as_of is {type(as_of).__name__}, and this reads a UTC instant there")
@@ -451,6 +475,17 @@ class TraceStore:
 
     def expire_spans(self, *, as_of: str) -> tuple[str, ...]:
         """Remove full span detail older than the retention window, and nothing else.
+
+        This is the layer that owns the policy. The horizon is ``retention_horizon``'s
+        answer - ``as_of`` minus ``RETENTION_DAYS`` - and the runs selected are the ones
+        that ended strictly before it, so the ninety days are Python's arithmetic over
+        the instant the caller supplied and nothing else re-derives or rechecks them.
+
+        SQLite owns something narrower and separate: the pass writes the horizon into
+        ``retention_pass``, and the trigger refuses any span delete that reaches past
+        that declared horizon - which bounds this loop to what it said it was doing, and
+        refuses a delete outside a pass entirely. The trigger cannot check the ninety
+        days, because it is never told ``as_of`` and has no clock to compare one against.
 
         Returns the runs this pass removed detail for, so a caller can say what
         happened rather than infer it. Everything a run is judged by afterwards - its

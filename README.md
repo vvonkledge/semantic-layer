@@ -161,15 +161,18 @@ claim to be another layer.
    `ontology/`, `sources/` and `packs/` byte-identical.
 10. A run is recorded whole or not at all, against a pack it verified with the real
    verifier and not on the caller's word. Duplicate or malformed identifiers, a parent
-   outside the run, a cycle, a reversed interval, a malformed instant and a run with no
-   spans are each refused with a sentence naming what to fix, and each leaves the store
-   empty. Replaying an identical run is a no-op; a trace id reused for anything else is
-   refused.
+   outside the run, a cycle, a reversed interval, a span lying outside its own run, a
+   reference too long for the store to hold, a malformed instant and a run with no spans
+   are each refused with a sentence naming what to fix, and each leaves the store empty.
+   Replaying an identical run is a no-op; a trace id reused for anything else is refused.
 11. Recorded runs and spans cannot be updated or selectively deleted, by this library or
-   by raw SQL. Retention removes full span detail strictly older than ninety days -
-   tested at the instant before the boundary, at it, and after it - keeps every rollup
-   indefinitely, and is safe to run again. The PROV summary is deterministic, readable by
-   a consumer that speaks only PROV-O, and still valid once the spans are gone.
+   by ordinary raw SQL. Retention removes full span detail strictly older than ninety
+   days - tested at the instant before the boundary, at it, and after it - keeps every
+   rollup indefinitely, and is safe to run again. The ninety days are the public API's
+   arithmetic and the triggers hold a pass to the horizon it declared; a local SQLite
+   file cannot defend itself against whoever owns it, and where that line falls is
+   documented and tested rather than implied. The PROV summary is deterministic, readable
+   by a consumer that speaks only PROV-O, and still valid once the spans are gone.
 12. L3 cannot hold a payload. A prompt, a tool call, an HTTP body, five kilobytes of text
    and a blob are each offered to every field that takes text and to the database
    directly, and there is no free-form attribute or unknown key for one to arrive under.

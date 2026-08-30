@@ -299,8 +299,10 @@ def test_the_store_refuses_a_payload_written_past_this_library(
 
     The model refuses all of this before the store is reached. This is the second wall:
     somebody with a SQLite connection - a later version of this code, a migration
-    script, a person at a shell - meets the same refusal, because the shape a column
-    may hold is written into the schema rather than enforced on the way in.
+    script, a person typing an INSERT at a shell - meets the same refusal, because the
+    shape a column may hold is written into the schema rather than enforced on the way
+    in. It is a wall against a mistake and not against the file's owner, who can rewrite
+    the schema; see docs/l3-execution-trace.md for where that line falls.
     """
     store.record(run(), pack=accepted_pack, as_of=AS_OF)
     with pytest.raises(sqlite3.IntegrityError):

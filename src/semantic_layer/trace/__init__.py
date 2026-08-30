@@ -38,7 +38,11 @@ than by a note in a review checklist:
   free-form attribute one could arrive under instead. See ``model`` and ``store``.
 * **Written once.** A run is recorded whole or not at all, never updated, and never
   selectively deleted. The one narrow exception is retention, which removes full span
-  detail older than ninety days and keeps every rollup indefinitely.
+  detail older than ninety days and keeps every rollup indefinitely. The API offers no
+  way to edit a record and the schema refuses an ordinary UPDATE or DELETE as well, so
+  the guarantee does not depend on everyone using the front door - but a local SQLite
+  file cannot defend itself from whoever owns it, and ``store`` says exactly where that
+  line falls.
 
 See docs/l3-execution-trace.md.
 """
