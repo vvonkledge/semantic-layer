@@ -19,7 +19,10 @@ paths through the same answer. The kinds are closed and split on one question:
 
 * **exit 2, the call is not one this contract defines.** The grammar did not parse, an
   option's value is not the shape the contract states for it, or the input document's
-  layout is not one this reader understands. Nothing was opened and nothing was read.
+  layout is not one this reader understands. Nothing is written either way, and the two
+  kinds differ in what had to be read to get there: a ``usage`` refusal happens before
+  anything is opened, while an ``input`` one happens after the document was read - which
+  is how its layout is known - and before any store is opened.
 * **exit 1, the call was understood and the answer is no.** A pack that is stale,
   tampered with or about something else; a run this layer will not record; a path that
   is missing, is not a file, or cannot be read; a store that is locked, is at another

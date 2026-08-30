@@ -228,8 +228,10 @@ def _held(arguments: argparse.Namespace) -> None:
 
     These are the checks that belong to the grammar rather than to the data: a value
     argparse accepted as text but that this contract says is an instant or a trace id.
-    Doing them here rather than where the value is first used is what makes exit 2 mean
-    "nothing was read", so a caller that got one knows no store was touched.
+    Doing them here rather than where the value is first used is what makes a ``usage``
+    refusal mean nothing was opened at all - which is a narrower promise than exit 2, and
+    the narrower one is the true one: an ``input`` refusal shares the exit code and has by
+    definition read the document it is refusing.
     """
     if getattr(arguments, "as_of", None) is not None:
         arguments.as_of = _instant(arguments.as_of)

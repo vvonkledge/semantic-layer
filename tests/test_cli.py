@@ -455,7 +455,35 @@ def test_a_run_nested_past_the_parser_is_refused_as_a_document(
     )
     assert answer.status == 2
     assert answer.error["kind"] == "input"
-    assert _recorded(store_path) == ()
+    # Never opened, rather than opened and empty: reading the document is how its layout
+    # is known, but the store comes after that and a refused layout never reaches it.
+    assert not store_path.exists()
+
+
+def test_a_usage_refusal_opens_nothing_at_all(invoke, store_path, pack_dir, tmp_path):
+    """The narrower of the two exit-2 promises, and the one the contract may state.
+
+    An `input` refusal has read the document it is refusing - there is no other way to
+    know its layout - so "nothing was read" was never true of exit 2 as a whole. It is
+    true of `usage`, because the arguments are held to their stated shapes before any
+    command runs, and that is what the published contract now says.
+    """
+    missing = tmp_path / "not-a-file.json"
+    answer = invoke(
+        "trace",
+        "record",
+        "--store",
+        str(store_path),
+        "--pack",
+        str(pack_dir),
+        "--as-of",
+        "the day before yesterday",
+        "--input",
+        str(missing),
+    )
+    assert answer.status == 2
+    assert answer.error["kind"] == "usage"
+    assert not store_path.exists()
 
 
 def _nested() -> bytes:

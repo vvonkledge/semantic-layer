@@ -74,8 +74,15 @@ unescapes it, so nothing is lost.
 The line between `1` and `2` is where the fault is, not how serious it is. **Exit 2 says
 the caller's own code is wrong** and no input would have helped: the grammar did not
 parse, an option's value is not the shape stated for it, or the input document's layout
-is not one this reader understands. Nothing was opened and nothing was read. **Exit 1
-says the call was right and the data or the state refused it.**
+is not one this reader understands. **Exit 1 says the call was right and the data or the
+state refused it.**
+
+Neither exit-2 kind writes anything, and they differ in what they had to read to get
+there. A `usage` refusal happens before anything at all is opened, because the
+arguments are held to their stated shapes before any command runs. An `input` refusal
+happens after the document was opened and read - reading it is how its layout is known -
+but before any store is opened, so a refused `trace record` leaves no store file where
+there was none.
 
 `error.kind` is closed, and each kind carries exactly one exit code:
 
