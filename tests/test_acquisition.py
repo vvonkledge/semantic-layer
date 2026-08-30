@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from semantic_layer import acquire, github, pack
+from semantic_layer import acquire, github, graph, pack
 
 REPOSITORY = {
     "id": 1347717349,
@@ -251,9 +251,32 @@ def test_a_snapshot_is_written_with_the_digest_that_checks_it(tmp_path, response
     assert read == snapshot
 
 
+@pytest.fixture
+def layer(tmp_path, monkeypatch):
+    """One repository holding one accepted observation, in a tree this test owns.
+
+    The commands downstream of a capture read and write committed paths, so a test that
+    interrupts a capture in ``tmp_path`` and then asserts about ``packs/`` is asserting
+    about files the interrupted writer could not have reached either way - true, and
+    unable to fail. Every path the three commands use is pointed here instead, so
+    `just reconcile` and `just pack` can be run for real against the snapshot this test
+    interrupted, and what they leave behind is what the assertions read.
+    """
+    technical = (tmp_path / "ontology" / "instances" / "technical").resolve()
+    technical.mkdir(parents=True)
+    accepted = technical / "github-vvonkledge-siana.ttl"
+    monkeypatch.setitem(graph.INSTANCE_GRAPHS, technical, graph.OBSERVED_GRAPH)
+    monkeypatch.setattr(graph, "TECHNICAL_DIR", technical)
+    monkeypatch.setattr(graph, "PACKS_DIR", tmp_path / "packs")
+    monkeypatch.setattr(
+        github, "snapshot_path", lambda *_args, **_kwargs: tmp_path / "snapshot.json"
+    )
+    monkeypatch.setattr(github, "accepted_path", lambda *_args, **_kwargs: accepted)
+
+
 @pytest.mark.parametrize("dies_at", [1, 2])
 def test_an_interruption_between_the_snapshot_and_its_digest_is_refused_not_believed(
-    tmp_path, monkeypatch, responses, dies_at
+    monkeypatch, responses, layer, dies_at
 ):
     """Two renames are not one, so what is guaranteed is that neither half is believed.
 
@@ -263,11 +286,20 @@ def test_an_interruption_between_the_snapshot_and_its_digest_is_refused_not_beli
     is refused by name rather than reconciled, so the accepted graph and the context pack
     cannot be built from a capture that never finished landing. Recovery is a person's:
     recapture, or `git checkout` the pair back.
+
+    The refusal is driven rather than described. The whole path is run first, so there
+    is a real accepted graph and a real pack to protect; then the capture is interrupted
+    and the next command a person would type is run against what it left. What must
+    fail, fails by name, and what must not move, has not moved.
     """
-    path = tmp_path / "snapshot.json"
+    path = github.snapshot_path()
     sidecar = path.with_name("snapshot.json.sha256")
     accepted = acquire.capture(observed_at="2026-08-30T06:07:15Z", reader=reader(responses))
     accepted_digest = acquire.write_snapshot(accepted, path)
+    github.main()
+    pack.main()
+    accepted_graph = github.accepted_path().read_bytes()
+    held = pack.read(pack.pack_dir())
 
     later = json.loads(json.dumps(accepted))
     later["observed_at"] = "2026-08-31T06:07:15Z"
@@ -282,22 +314,37 @@ def test_an_interruption_between_the_snapshot_and_its_digest_is_refused_not_beli
             raise OSError("the machine went away")
         landed(target, payload)
 
-    monkeypatch.setattr(acquire, "write_atomically", die_on_the_nth_write)
-    with pytest.raises(OSError, match="machine went away"):
-        acquire.write_snapshot(later, path)
-
-    accepted_graph = github.accepted_path().read_bytes()
-    held = pack.read(pack.pack_dir())
+    # Scoped, so the interruption is the capture's own and the commands run below write
+    # for real.
+    with monkeypatch.context() as interrupted:
+        interrupted.setattr(acquire, "write_atomically", die_on_the_nth_write)
+        with pytest.raises(OSError, match="machine went away"):
+            acquire.write_snapshot(later, path)
 
     if dies_at == 1:
+        # Nothing landed, so the pair is still the accepted observation and the next
+        # `just reconcile` is an ordinary one that reproduces the same bytes.
         assert github.read_snapshot(path) == (accepted, accepted_digest)
+        github.main()
     else:
         assert json.loads(path.read_bytes()) == later
         assert sidecar.read_text(encoding="utf-8").strip() == accepted_digest
         with pytest.raises(github.ReconcileError, match="Recapture"):
             github.read_snapshot(path)
+        # The command, not just the reader it calls: `just reconcile` against this pair
+        # refuses before it writes anything, which is the whole of what protects the
+        # accepted graph.
+        with pytest.raises(github.ReconcileError, match="Recapture"):
+            github.main()
 
-    # The half a consumer holds. Nothing downstream of an unfinished capture ran, so
-    # the accepted observation and the pack built from it are exactly where they were.
-    assert github.accepted_path().read_bytes() == accepted_graph
+    assert github.accepted_path().read_bytes() == accepted_graph, (
+        "the reconcile wrote a graph from a capture that never finished landing"
+    )
+    assert pack.read(pack.pack_dir()) == held, "the pack moved without a reconcile writing one"
+
+    # And the observation a consumer would be handed is still the accepted one: rebuild
+    # the pack from the graph the refusal protected and it is byte-identical, so the
+    # interrupted capture reached neither half of what leaves this repository.
+    pack.main()
     assert pack.read(pack.pack_dir()) == held
+    assert json.loads(held.manifest)["observed_at"] == accepted["observed_at"]
