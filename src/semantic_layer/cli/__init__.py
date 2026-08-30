@@ -374,8 +374,25 @@ def _exported(half: bytes, name: str) -> dict:
         ) from error
 
 
+def _open(path) -> TraceStore:
+    """The store, opened - and a store that cannot be read reported as the store's fault.
+
+    ``TraceStore.open`` refuses a store written by another schema version, and it refuses
+    it as a ``TraceError`` because from inside the library every refusal about recorded
+    evidence is one. Out here the two have to be told apart. A consumer handed ``trace``
+    asked this store for something it will not give and can go on using the file; one
+    handed ``store`` has a file it must stop using, and that is the distinction it most
+    needs to act on. So the one refusal that is about the file rather than about a run is
+    reported as the file's.
+    """
+    try:
+        return TraceStore.open(path)
+    except TraceError as error:
+        raise CommandError("store", str(error)) from error
+
+
 def _opened(arguments: argparse.Namespace, *, creating: bool = False) -> TraceStore:
-    return TraceStore.open(files.store_file(arguments.store, creating=creating))
+    return _open(files.store_file(arguments.store, creating=creating))
 
 
 def trace_record(arguments: argparse.Namespace) -> dict:
@@ -394,7 +411,7 @@ def trace_record(arguments: argparse.Namespace) -> dict:
     path = files.store_file(arguments.store, creating=True)
     run = run_input.decode(files.read_input(arguments.input))
     pack = files.read_pack(arguments.pack)
-    with TraceStore.open(path) as store:
+    with _open(path) as store:
         recorded = store.write(
             run,
             pack=pack,

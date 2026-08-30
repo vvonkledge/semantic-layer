@@ -279,9 +279,35 @@ def test_a_pack_about_another_target_is_refused(committed):
         )
 
 
-def test_a_manifest_that_is_not_json_is_refused(committed):
-    with pytest.raises(pack.PackError, match="not valid JSON"):
-        pack.verify(committed.content, b"{", as_of=_within(committed))
+#: Every way a JSON parser declines to return a value, which is not one exception type.
+#: Malformed input it can reject, a document nested past its own bound, and an integer
+#: literal past CPython's digit limit are a JSONDecodeError, a RecursionError and a bare
+#: ValueError respectively - and only the first is what anybody thinks of as "not JSON".
+#: The depth and the digit count are derived from the interpreter's own limits so the
+#: cases stay past them if either ever moves.
+UNPARSEABLE = {
+    "malformed": b"{",
+    "nested past the parser's bound": (
+        "[" * (sys.getrecursionlimit() * 20) + "]" * (sys.getrecursionlimit() * 20)
+    ).encode(),
+    "a number too long to convert": b'{"artifact_count": '
+    + b"1" * (sys.get_int_max_str_digits() + 100)
+    + b"}",
+}
+
+
+@pytest.mark.parametrize("payload", UNPARSEABLE.values(), ids=list(UNPARSEABLE))
+def test_a_manifest_no_parser_will_read_is_refused(committed, payload):
+    """One refusal for all of them, because the list of failures is not this reader's.
+
+    Guarding the parse family by family means adding a clause each time CPython grows a
+    way for `json.loads` not to return - which is how the digit limit got past a reader
+    that had already been taught about malformed input and about depth. Anything a parser
+    will not return a value for is a manifest that cannot be read, and a consumer
+    catching the documented `PackError` catches all of it.
+    """
+    with pytest.raises(pack.PackError, match="not JSON this reader can parse"):
+        pack.verify(committed.content, payload, as_of=_within(committed))
 
 
 def test_a_manifest_that_is_not_utf8_is_refused(committed):
@@ -297,20 +323,6 @@ def test_a_manifest_that_is_not_utf8_is_refused(committed):
         pack.verify(committed.content, b"\xff\xfe{}", as_of=_within(committed))
     with pytest.raises(pack.PackError, match="not UTF-8"):
         pack.verify(committed.content, committed.manifest + b"\x80", as_of=_within(committed))
-
-
-def test_a_manifest_nested_past_the_parser_is_refused(committed):
-    """Valid JSON the parser gives up on rather than rejects, which is a third thing.
-
-    A `RecursionError` is neither a `JSONDecodeError` nor a `PackError`, so before this
-    it left `verify` as a traceback out of the json module - not caught by the
-    `except pack.PackError` a consumer is told to write, and not a sentence naming what
-    is wrong. A manifest is a flat object of named fields, so nothing this deep is one.
-    """
-    depth = sys.getrecursionlimit() * 20
-    nested = ("[" * depth + "]" * depth).encode("utf-8")
-    with pytest.raises(pack.PackError, match="nested deeper than this reader parses"):
-        pack.verify(committed.content, nested, as_of=_within(committed))
 
 
 ## What a consumer must refuse without being handed a traceback.

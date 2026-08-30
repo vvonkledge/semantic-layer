@@ -302,19 +302,22 @@ def verify(
             f"what the manifest's own content_media_type says of the other one."
         ) from error
 
+    # The parse is guarded whole, by every family it can fail with, rather than failure
+    # by failure. `json` raises a JSONDecodeError for input it can reject, and it also
+    # raises a bare ValueError for an integer literal past CPython's digit limit and a
+    # RecursionError for a document nested past the parser's own bound - neither of
+    # which is malformed JSON, and the list is the interpreter's to extend rather than
+    # this reader's to keep up with. Anything a parser will not return a value for is a
+    # manifest that cannot be read, which is one refusal and not three. This mirrors how
+    # the content is guarded below; only the parse is inside the try, so a fault in this
+    # module's own code still surfaces.
     try:
         stated = json.loads(text)
-    except json.JSONDecodeError as error:
-        raise PackError(f"the manifest is not valid JSON: {error}") from error
-    except RecursionError as error:
-        # Nested deeply enough, a manifest is valid JSON that the parser gives up on
-        # rather than rejects, and a RecursionError is neither a PackError nor anything
-        # a consumer was told to catch. A manifest is a flat object of named fields, so
-        # nothing that reaches Python's recursion limit is one.
+    except (ValueError, RecursionError) as error:
         raise PackError(
-            f"the manifest is nested deeper than this reader parses: {error}. A manifest "
-            f"is a flat object of named fields, and a document deep enough to exhaust a "
-            f"parser is not one."
+            f"the manifest is not JSON this reader can parse: {error}. A manifest is a flat "
+            f"object of named fields - so one that is malformed, nested past a parser's own "
+            f"bound, or carrying a number too long to convert is not one."
         ) from error
     if not isinstance(stated, dict):
         raise PackError("the manifest is not an object")

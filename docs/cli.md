@@ -83,10 +83,15 @@ says the call was right and the data or the state refused it.**
 |---|---|---|
 | `usage` | 2 | the arguments, or an option's value, are not what the grammar defines |
 | `input` | 2 | the run document's layout is not the one published below |
-| `pack` | 1 | a pack is stale, tampered with, inconsistent, or about something else |
+| `pack` | 1 | a pack is stale, tampered with, unreadable, or about something else |
 | `trace` | 1 | this layer will not record, or does not hold, that run |
 | `path` | 1 | a file is missing, is not a regular file, or cannot be read |
 | `store` | 1 | the store is locked, corrupt, or written by another schema version |
+
+`trace` and `store` are the pair worth telling apart. `trace` is this store declining to
+answer one question - no such run, a replay that differs, a run it will not record - and
+the file is fine to go on using. `store` is the file itself: locked, not a database, or
+written by a schema version this does not read, and it must not be used again.
 
 Branch on `kind` or on the exit code; they cannot disagree.
 
@@ -353,12 +358,13 @@ counter that wrapped, or was never a count.
 Two different things are checked, and the split is why they do not drift.
 
 **Layout, refused as `input` at exit 2**, before a store is opened: the document is not
-UTF-8, is not JSON, is not an object, declares another `schema` or `version`, carries a
-key nothing defines at any level, writes a key twice in one object, uses a JSON type a
-field is not written in, uses `NaN` or `Infinity`, gives `true` where a whole number
-belongs, is nested deeper than the parser will go, or leaves out a field that has no
-default. The message names the field and the
-*shape* that arrived, never the value that was in it.
+UTF-8, is not an object, declares another `schema` or `version`, carries a key nothing
+defines at any level, writes a key twice in one object, uses a JSON type a field is not
+written in, uses `NaN` or `Infinity`, gives `true` where a whole number belongs, or
+leaves out a field that has no default. Anything a JSON parser will not return a value
+for is refused the same way, whether it is malformed, nested past the parser's own
+bound, or carrying an integer literal too long to convert. The message names the field
+and the *shape* that arrived, never the value that was in it.
 
 **Content, refused as `trace` at exit 1**: a trace id that is not 32 hex characters, a
 value outside a closed set, an instant spelled another way, a span outside its run, a

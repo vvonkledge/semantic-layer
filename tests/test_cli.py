@@ -799,14 +799,32 @@ def test_recording_into_a_tree_that_is_not_there_is_refused(invoke, tmp_path, pa
     assert answer.error["kind"] == "path"
 
 
-def test_a_store_at_another_schema_version_is_refused(invoke, store_path, pack_dir, input_file):
+@pytest.mark.parametrize("command", ["get", "project", "expire", "record"])
+def test_a_store_at_another_schema_version_is_the_stores_fault(
+    invoke, store_path, pack_dir, input_file, command
+):
+    """`store` and not `trace`, because it is the distinction a consumer has to act on.
+
+    The library refuses this as a `TraceError`, like every other refusal about recorded
+    evidence, and from inside a library that is right. Out here the two mean different
+    things to whoever is holding the file: `trace` is this store declining to answer one
+    question and can be retried with another, while `store` is a file that must not be
+    used again. Every command that opens a store reports it the same way.
+    """
     record(invoke, store_path, pack_dir, input_file)
     connection = sqlite3.connect(store_path, isolation_level=None)
     connection.execute("PRAGMA user_version = 99")
     connection.close()
-    answer = invoke("trace", "get", "--store", str(store_path), "--trace-id", trace_runs.TRACE_ID)
+    if command == "record":
+        answer = record(invoke, store_path, pack_dir, input_file)
+    elif command == "expire":
+        answer = invoke("trace", "expire", "--store", str(store_path), "--as-of", LONG_AFTER)
+    else:
+        answer = invoke(
+            "trace", command, "--store", str(store_path), "--trace-id", trace_runs.TRACE_ID
+        )
     assert answer.status == 1
-    assert answer.error["kind"] == "trace"
+    assert answer.error["kind"] == "store"
 
 
 def test_an_input_that_is_not_a_regular_file_is_refused(invoke, store_path, pack_dir, tmp_path):

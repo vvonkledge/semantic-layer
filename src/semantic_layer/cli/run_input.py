@@ -202,20 +202,24 @@ def decode(document: bytes) -> Run:
         text = document.decode("utf-8")
     except UnicodeDecodeError as error:
         raise _refuse("the input document", f"is not UTF-8: {error}") from error
+    # Guarded whole, by every family the parse can fail with, rather than failure by
+    # failure. `json` raises a JSONDecodeError for input it can reject, and it also
+    # raises a bare ValueError for an integer literal past CPython's digit limit and a
+    # RecursionError for a document nested past the parser's own bound - neither of
+    # which is malformed JSON, and the list is the interpreter's to extend rather than
+    # this reader's to keep up with. Anything a parser will not return a value for is a
+    # document that cannot be read, and a family missed here is a traceback on the
+    # stream this command promises to leave empty. The hooks below raise a
+    # ``CommandError``, which is not a ``ValueError``, so their refusals pass through.
     try:
         stated = json.loads(text, object_pairs_hook=_pairs, parse_constant=_constant)
-    except json.JSONDecodeError as error:
-        raise _refuse("the input document", f"is not valid JSON: {error}") from error
-    except RecursionError as error:
-        # Nested deeply enough, a document is valid JSON that the parser gives up on
-        # rather than rejects, and a RecursionError escaping here would be a traceback
-        # on a stream this command promises to leave empty. A run is a handful of levels
-        # deep, so nothing that exhausts a parser is one.
+    except (ValueError, RecursionError) as error:
         raise _refuse(
             "the input document",
-            f"is nested deeper than this reader parses: {error}. A run is a handful of "
-            f"levels deep - the run, its records, and the references one of them names - "
-            f"so a document deep enough to exhaust a parser is not one.",
+            f"is not JSON this reader can parse: {error}. A run is a handful of levels deep "
+            f"and holds no number a machine cannot hold - so a document that is malformed, "
+            f"nested past a parser's own bound, or carrying a number too long to convert is "
+            f"not one.",
         ) from error
 
     if not isinstance(stated, dict):

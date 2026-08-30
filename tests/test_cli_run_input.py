@@ -152,18 +152,35 @@ def test_a_key_written_twice_deep_inside_is_refused():
     refusal(doubled.encode("utf-8"))
 
 
-def test_a_document_nested_past_the_parser_is_refused():
-    """Valid JSON the parser gives up on rather than rejects, which is a third thing.
+#: Every way a JSON parser declines to return a value, which is not one exception type:
+#: malformed input it can reject, a document nested past its own bound, and an integer
+#: literal past CPython's digit limit are a JSONDecodeError, a RecursionError and a bare
+#: ValueError. Only the first is what anybody thinks of as "not JSON", and a reader that
+#: catches them one at a time is a reader that will meet the next one in production.
+def _unparseable() -> dict:
+    deep = sys.getrecursionlimit() * 20
+    digits = sys.get_int_max_str_digits() + 100
+    inside = f'{{"schema": "{run_input.SCHEMA}", "version": 1, "run": '
+    return {
+        "malformed": b"{",
+        "nested past the parser's bound": (inside + "[" * deep + "]" * deep + "}").encode(),
+        "a number too long to convert": (inside + '{"value": ' + "1" * digits + "}}").encode(),
+    }
 
-    A `RecursionError` is neither a `JSONDecodeError` nor anything this boundary catches,
-    so before this it left the command as a traceback on the stream that is promised to
-    stay empty, with nothing at all on stdout. A run is a handful of levels deep, so
-    nothing that exhausts a parser is one.
+
+UNPARSEABLE = _unparseable()
+
+
+@pytest.mark.parametrize("payload", UNPARSEABLE.values(), ids=list(UNPARSEABLE))
+def test_a_document_no_parser_will_read_is_refused(payload):
+    """One refusal for all of them, because the list of failures is not this reader's.
+
+    Each of these left the command as a traceback on the stream it promises to leave
+    empty, with nothing at all on stdout - and each was found after the one before it had
+    been fixed by name. The parse is now guarded whole, so a family CPython adds later is
+    a refusal rather than the next crash.
     """
-    depth = sys.getrecursionlimit() * 20
-    nested = f'{{"schema": "{run_input.SCHEMA}", "version": 1, "run": '
-    nested += "[" * depth + "]" * depth + "}"
-    assert "nested deeper" in refusal(nested.encode("utf-8"))
+    assert "not JSON this reader can parse" in refusal(payload)
 
 
 @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
