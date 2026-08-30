@@ -8,18 +8,33 @@ refused.
 """
 
 import json
+from datetime import datetime, timedelta
 
 import pytest
 from rdflib import RDF, Graph, URIRef
 
 from semantic_layer import github, graph, pack
 
-FRESH = "2026-08-30T12:00:00Z"
-
 
 @pytest.fixture(scope="session")
 def committed():
     return pack.read(pack.pack_dir())
+
+
+def _within(held) -> str:
+    """An instant inside the pack's own window, read from the pack.
+
+    Hard-coding one would be a test that quietly stops meaning anything the first time
+    somebody refreshes the observation: the window moves and a date chosen to be inside
+    it stays where it was. The instant the observation was made is inside its own window
+    by construction, whenever that was.
+    """
+    return json.loads(held.manifest)["observed_at"]
+
+
+def _past(held) -> str:
+    """The instant the pack expires, which is the first one it must refuse."""
+    return json.loads(held.manifest)["fresh_until"]
 
 
 @pytest.fixture
@@ -44,7 +59,7 @@ def test_the_committed_pack_is_what_the_accepted_graph_packs(committed):
 
 
 def test_the_committed_pack_verifies_inside_its_own_window(committed):
-    stated = pack.verify(committed.content, committed.manifest, as_of=FRESH)
+    stated = pack.verify(committed.content, committed.manifest, as_of=_within(committed))
     assert stated["target"] == "vvonkledge/siana"
     assert stated["trust_basis"]
 
@@ -126,23 +141,27 @@ def test_a_pack_carries_the_crossing_edge_and_not_what_is_on_the_other_side():
 ## What a consumer must refuse.
 
 
-def test_a_stale_pack_is_refused(committed):
-    with pytest.raises(pack.PackError, match="stops being worth believing"):
-        pack.verify(committed.content, committed.manifest, as_of="2026-09-05T00:00:00Z")
+def test_a_pack_is_refused_from_the_instant_it_expires(committed):
+    """The boundary is exclusive, so "fresh until" means what it says.
 
-
-def test_a_pack_is_refused_at_the_instant_it_expires(committed):
-    """The boundary is exclusive, so "fresh until" means what it says."""
-    stated = json.loads(committed.manifest)
-    with pytest.raises(pack.PackError, match="stops being worth believing"):
-        pack.verify(committed.content, committed.manifest, as_of=stated["fresh_until"])
+    Both instants are read from the pack rather than written down here, so a refresh
+    moves the window and the test goes on asking the same question.
+    """
+    expires = datetime.fromisoformat(_past(committed))
+    for instant in (expires, expires + timedelta(days=7)):
+        with pytest.raises(pack.PackError, match="stops being worth believing"):
+            pack.verify(
+                committed.content,
+                committed.manifest,
+                as_of=instant.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            )
 
 
 def test_tampered_content_is_refused(committed):
     tampered = committed.content.replace(b'"public"', b'"private"')
     assert tampered != committed.content
     with pytest.raises(pack.PackError, match="do not belong to each other"):
-        pack.verify(tampered, committed.manifest, as_of=FRESH)
+        pack.verify(tampered, committed.manifest, as_of=_within(committed))
 
 
 def test_a_manifest_that_disagrees_with_its_content_is_refused(committed):
@@ -159,7 +178,11 @@ def test_a_manifest_that_disagrees_with_its_content_is_refused(committed):
         ("source", "https://semantic-layer.19h09.co/l2/gitlab/gitlab-com"),
     ):
         with pytest.raises(pack.PackError, match="says"):
-            pack.verify(committed.content, amended(committed, **{key: value}).manifest, as_of=FRESH)
+            pack.verify(
+                committed.content,
+                amended(committed, **{key: value}).manifest,
+                as_of=_within(committed),
+            )
 
 
 def test_a_manifest_naming_an_observation_the_content_lacks_is_refused(committed):
@@ -169,7 +192,7 @@ def test_a_manifest_naming_an_observation_the_content_lacks_is_refused(committed
         + "0" * 64,
     )
     with pytest.raises(pack.PackError, match="does not contain it"):
-        pack.verify(committed.content, amended_pack.manifest, as_of=FRESH)
+        pack.verify(committed.content, amended_pack.manifest, as_of=_within(committed))
 
 
 def test_a_pack_from_another_source_is_refused(committed):
@@ -183,7 +206,7 @@ def test_a_pack_from_another_source_is_refused(committed):
         pack.verify(
             committed.content,
             committed.manifest,
-            as_of=FRESH,
+            as_of=_within(committed),
             expect_source="https://semantic-layer.19h09.co/l2/github/github-example-org",
         )
 
@@ -193,19 +216,21 @@ def test_a_pack_about_another_target_is_refused(committed):
         pack.verify(
             committed.content,
             committed.manifest,
-            as_of=FRESH,
+            as_of=_within(committed),
             expect_target="vvonkledge/semantic-layer",
         )
 
 
 def test_a_pack_written_in_another_layout_is_refused(committed):
     with pytest.raises(pack.PackError, match="another layout"):
-        pack.verify(committed.content, amended(committed, pack_version=2).manifest, as_of=FRESH)
+        pack.verify(
+            committed.content, amended(committed, pack_version=2).manifest, as_of=_within(committed)
+        )
 
 
 def test_a_manifest_that_is_not_json_is_refused(committed):
     with pytest.raises(pack.PackError, match="not valid JSON"):
-        pack.verify(committed.content, b"{", as_of=FRESH)
+        pack.verify(committed.content, b"{", as_of=_within(committed))
 
 
 def test_a_comparison_instant_that_is_not_an_instant_is_refused(committed):
@@ -248,7 +273,7 @@ def test_hostile_source_text_survives_the_whole_path():
     observation = next(iter(observed.subjects(RDF.type, graph.TECH.Observation)))
     built = pack.build(observed, observation)
 
-    pack.verify(built.content, built.manifest, as_of=FRESH)
+    pack.verify(built.content, built.manifest, as_of=_within(built))
     assert set(graph.load_text(built.content.decode())) == set(
         Graph().parse(data=built.content, format="nt")
     )

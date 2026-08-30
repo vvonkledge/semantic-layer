@@ -44,7 +44,23 @@ class SerializationError(ValueError):
     """A graph was handed here that has no one deterministic way to be written."""
 
 
+#: What may not appear inside <> in Turtle or N-Triples without being escaped, plus the
+#: space and the control characters. Every IRI this repository writes is minted, and
+#: minting percent-encodes anything a source contributed, so none of these can reach
+#: here - which is exactly why it is worth saying so out loud rather than discovering
+#: otherwise in a file somebody else is parsing.
+IRI_FORBIDDEN = set('<>"{}|^`\\') | {chr(code) for code in range(0x21)}
+
+
 def _iri(node: URIRef, *, compact: bool) -> str:
+    offending = sorted(IRI_FORBIDDEN & set(str(node)))
+    if offending:
+        raise SerializationError(
+            f"the IRI {str(node)!r} contains {offending}, which cannot be written between "
+            f"angle brackets. Every identifier here is minted, and minting percent-encodes "
+            f"whatever the source contributed, so this is text that reached a graph without "
+            f"going through semantic_layer.ids."
+        )
     if compact:
         for prefix, namespace in PREFIXES:
             if str(node).startswith(namespace):

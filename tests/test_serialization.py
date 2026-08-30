@@ -119,3 +119,31 @@ def test_a_blank_node_is_refused_rather_than_labelled(write):
     graph.add((BNode(), PREDICATE, Literal("anonymous")))
     with pytest.raises(serialize.SerializationError, match="no stable name"):
         write(graph)
+
+
+@pytest.mark.parametrize(
+    "iri",
+    [
+        "https://semantic-layer.19h09.co/l2/github/api-github-com/repository/a b",
+        "https://semantic-layer.19h09.co/l2/github/api-github-com/repository/a>b",
+        'https://semantic-layer.19h09.co/l2/github/api-github-com/repository/a"b',
+        "https://semantic-layer.19h09.co/l2/github/api-github-com/repository/a\nb",
+    ],
+    ids=["space", "angle bracket", "quote", "newline"],
+)
+@pytest.mark.parametrize(
+    "write", [serialize.turtle, serialize.ntriples], ids=["turtle", "n-triples"]
+)
+def test_an_iri_that_cannot_be_written_is_refused(write, iri):
+    """Not written out and left for a parser to choke on.
+
+    Nothing should ever reach here: every identifier is minted, and minting
+    percent-encodes whatever the source contributed. That is precisely why the writer
+    says so rather than assuming it - a graph carrying an IRI that did not go through
+    semantic_layer.ids is a bug somewhere upstream, and silently emitting a file nobody
+    can parse is the worst available way to report it.
+    """
+    graph = Graph()
+    graph.add((URIRef(iri), PREDICATE, Literal("v")))
+    with pytest.raises(serialize.SerializationError, match="angle brackets"):
+        write(graph)
