@@ -1,0 +1,1 @@
+Metric https://semantic-layer.19h09.co/fixture/l3/metric/4bf92f3577b34da6a3ce929d0e0e4736/branches-read has the value 2.5, which is not an xsd:integer. Measurements are whole numbers so the same measurement serializes to the same bytes on every machine, and so a value cannot be text with a number in it.

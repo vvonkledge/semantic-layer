@@ -1,0 +1,481 @@
+# SHACL shapes for the L3 execution-trace layer.
+#
+# Held to exactly the standard the other two shapes files are held to, and by the same
+# suite: one constraint, one message written for whoever tripped it, one negative
+# fixture committing that exact message. tests/test_shape_coverage.py reads every
+# shapes file in this directory into one graph, so nothing here is covered by being in
+# a newer file. The qualified family, sh:flags and sh:ignoredProperties are refused
+# here for the reasons ontology/shapes/biz.ttl gives.
+#
+# What these shapes are for is narrower than what the writer checks, and the division
+# is deliberate. semantic_layer.trace validates a whole run before it commits anything:
+# identifier spelling, parentage, cycles, uniqueness, closed vocabularies, the privacy
+# boundary. That is where an actionable refusal belongs, because the caller is right
+# there with the run in their hand. These shapes are the contract for the durable
+# summary once it has left the writer - the skeleton a consumer can check without
+# trusting whoever produced it. So they state what a summary must carry to be readable
+# at all, and they draw the two boundaries no writer of any kind may cross:
+#
+#   - An L3 node may not assert a business or technical predicate. A trace is evidence.
+#     It records what happened, not what the organization declared or what a source was
+#     observed to hold, and it changes neither. This is the rule most likely to be
+#     broken in a hurry, by a run that "learns" the default branch has moved and
+#     helpfully patches the observed graph.
+#   - Recorded evidence is committed in the evidence graph and nowhere else, and
+#     nothing else is committed there. Same mechanism as the L1/L2 pair: the loader
+#     picks the graph from the directory the file sits in, and Turtle has no syntax for
+#     naming a graph, so a file cannot claim to be another layer.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix shpl: <https://semantic-layer.19h09.co/shapes/trace#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix trc:  <https://semantic-layer.19h09.co/vocab/trace#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://semantic-layer.19h09.co/shapes/trace>
+    a owl:Ontology ;
+    rdfs:label "Semantic layer execution-trace shapes (L3)" ;
+    owl:versionInfo "0.1.0" ;
+    sh:declare [ sh:prefix "biz"  ; sh:namespace "https://semantic-layer.19h09.co/vocab/biz#"^^xsd:anyURI ] ,
+               [ sh:prefix "prov" ; sh:namespace "http://www.w3.org/ns/prov#"^^xsd:anyURI ] ,
+               [ sh:prefix "tech" ; sh:namespace "https://semantic-layer.19h09.co/vocab/tech#"^^xsd:anyURI ] ,
+               [ sh:prefix "trc"  ; sh:namespace "https://semantic-layer.19h09.co/vocab/trace#"^^xsd:anyURI ] ,
+               [ sh:prefix "rdf"  ; sh:namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"^^xsd:anyURI ] ,
+               [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,
+               [ sh:prefix "owl"  ; sh:namespace "http://www.w3.org/2002/07/owl#"^^xsd:anyURI ] ,
+               [ sh:prefix "xsd"  ; sh:namespace "http://www.w3.org/2001/XMLSchema#"^^xsd:anyURI ] .
+
+## Identity: recorded evidence is machine-minted, and never anonymous.
+
+shpl:TraceIdentityShape
+    a sh:NodeShape ;
+    sh:targetClass trc:Run , trc:Span , trc:ContextPack , trc:Outcome , trc:Metric , trc:Finding ;
+    sh:nodeKind sh:IRI ;
+    sh:message "A trace entity was recorded as a blank node, with no identifier. Every L3 entity is machine-minted from the run it belongs to, so a blank node is a record nothing can cite, join to an APM, or find again after the spans behind it have expired. See docs/identifiers.md." .
+
+## The run: which run it was, what it was told, and how it ended.
+
+shpl:RunShape
+    a sh:NodeShape ;
+    sh:targetClass trc:Run ;
+
+    sh:property [
+        sh:path trc:usedPack ;
+        sh:minCount 1 ;
+        sh:message "Run {$this} names no context pack with trc:usedPack. A run with no record of what it was told cannot prove what it knew, so a failure cannot be attributed between bad knowledge and bad reasoning and the evidence is unusable. This is the most important cardinality in the model." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:usedPack ;
+        sh:maxCount 1 ;
+        sh:message "Run {$this} names more than one context pack with trc:usedPack. Two packs is two answers to 'what did this run know', and a reader will act on the convenient one." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:usedPack ;
+        sh:class trc:ContextPack ;
+        sh:message "Run {$this} used {?value}, which is not a ContextPack. The pack binding names the verified bytes the run was handed, not the observation inside them and not the run's own output." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:traceId ;
+        sh:minCount 1 ;
+        sh:message "Run {$this} carries no trc:traceId. The trace id is what joins this evidence to the tracing the fleet already runs; without it the record is a second, divergent observability system." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:traceId ;
+        sh:maxCount 1 ;
+        sh:message "Run {$this} carries more than one trc:traceId. One run is one trace, and only one of these can be the id the identifier was minted from." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:traceId ;
+        sh:pattern "^[0-9a-f]{32}$" ;
+        sh:message "Run {$this} carries the trace id {?value}, which is not 32 lower-case hex characters. An abbreviated or re-cased trace id does not compare equal to the one the tracer emitted, so nothing downstream can match it." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:hasOutcome ;
+        sh:minCount 1 ;
+        sh:message "Run {$this} names no outcome with trc:hasOutcome. How a run ended is the one thing about it that is kept indefinitely, so a run without one records that something happened and nothing about what came of it." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:hasOutcome ;
+        sh:maxCount 1 ;
+        sh:message "Run {$this} names more than one outcome with trc:hasOutcome. A run ended one way; two recorded outcomes leave a reader to pick, and counting them across a fleet stops meaning anything." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:hasOutcome ;
+        sh:class trc:Outcome ;
+        sh:message "Run {$this} ended with {?value}, which is not an Outcome. The outcome is the closed state the run finished in, not a finding it made along the way." ;
+    ] .
+
+## The interval, for anything that took time.
+#
+# Written once and targeted at both activities, because a run and a span answer the
+# same question about themselves and one rule is one message a reader can act on.
+
+shpl:ActivityIntervalShape
+    a sh:NodeShape ;
+    sh:targetClass trc:Run , trc:Span ;
+
+    sh:property [
+        sh:path prov:startedAtTime ;
+        sh:minCount 1 ;
+        sh:message "Trace activity {$this} names no instant with prov:startedAtTime. Evidence that cannot say when it happened cannot be ordered against anything else that did, which is most of what a trace is read for." ;
+    ] ;
+
+    sh:property [
+        sh:path prov:startedAtTime ;
+        sh:maxCount 1 ;
+        sh:message "Trace activity {$this} names more than one instant with prov:startedAtTime. Two beginnings is no beginning, and the duration a metric was rolled up from was computed against one of them." ;
+    ] ;
+
+    sh:property [
+        sh:path prov:startedAtTime ;
+        sh:datatype xsd:dateTime ;
+        sh:message "Trace activity {$this} started at {?value}, which is not an xsd:dateTime. A date is not an instant, and comparing one against a retention horizon gives an answer that looks right and is not." ;
+    ] ;
+
+    sh:property [
+        sh:path prov:endedAtTime ;
+        sh:minCount 1 ;
+        sh:message "Trace activity {$this} names no instant with prov:endedAtTime. Recorded evidence is written when the activity is over, so one that never ended is a record of something still running - which is not evidence yet." ;
+    ] ;
+
+    sh:property [
+        sh:path prov:endedAtTime ;
+        sh:maxCount 1 ;
+        sh:message "Trace activity {$this} names more than one instant with prov:endedAtTime. Retention decides what to remove by comparing this against a horizon, so two of them is a run that is both expired and not." ;
+    ] ;
+
+    sh:property [
+        sh:path prov:endedAtTime ;
+        sh:datatype xsd:dateTime ;
+        sh:message "Trace activity {$this} ended at {?value}, which is not an xsd:dateTime. Retention compares this against an instant, and a value that is not one compares false in silence - which fails towards keeping span detail forever." ;
+    ] ;
+
+    # Written as a SPARQL constraint rather than a pair of counts because the rule is
+    # about two values relative to each other, which no cardinality states. Both are
+    # required to be instants before they are compared, and the two sh:datatype
+    # constraints above report it when they are not: rdflib will order an xsd:date
+    # against an xsd:dateTime and hand back an answer, so an interval check written
+    # without the guard reports a coherent interval as reversed and sends the reader to
+    # fix the wrong thing.
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Trace activity {$this} started at {?startedAt} and ended at {?endedAt}, which is earlier. An activity that ended before it began cannot be ordered against anything, and every duration rolled up from it is negative." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/trace> ;
+        sh:select """
+            SELECT $this ?startedAt ?endedAt
+            WHERE {
+                $this prov:startedAtTime ?startedAt ;
+                      prov:endedAtTime ?endedAt .
+                FILTER ( datatype(?startedAt) = xsd:dateTime )
+                FILTER ( datatype(?endedAt) = xsd:dateTime )
+                FILTER ( ?endedAt < ?startedAt )
+            }
+        """ ;
+    ] .
+
+## The pack binding: which exact bytes this run was handed.
+
+shpl:ContextPackShape
+    a sh:NodeShape ;
+    sh:targetClass trc:ContextPack ;
+
+    sh:property [
+        sh:path trc:contentDigest ;
+        sh:minCount 1 ;
+        sh:message "Context pack {$this} carries no trc:contentDigest. The digest is the whole of what the binding is: a pack recorded without one names a pack by nothing, and any bytes at all could be produced later and called the ones this run used." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:contentDigest ;
+        sh:maxCount 1 ;
+        sh:message "Context pack {$this} carries more than one trc:contentDigest. Two digests describe two sets of bytes, and the run was handed one of them." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:contentDigest ;
+        sh:pattern "^sha256:[0-9a-f]{64}$" ;
+        sh:message "Context pack {$this} carries the content digest {?value}, which is not a sha256: digest followed by 64 lower-case hex characters. A digest nothing can recompute in the same spelling binds nothing." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:manifestDigest ;
+        sh:minCount 1 ;
+        sh:message "Context pack {$this} carries no trc:manifestDigest. A pack is two files, and the manifest is the half a consumer reads without parsing the content; a binding that names only the content cannot tell two packs apart by what they claimed." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:manifestDigest ;
+        sh:maxCount 1 ;
+        sh:message "Context pack {$this} carries more than one trc:manifestDigest. The run was handed one manifest, and a second recorded here describes a pack that was not verified." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:manifestDigest ;
+        sh:pattern "^sha256:[0-9a-f]{64}$" ;
+        sh:message "Context pack {$this} carries the manifest digest {?value}, which is not a sha256: digest followed by 64 lower-case hex characters. A digest nothing can recompute in the same spelling binds nothing." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:packObservation ;
+        sh:minCount 1 ;
+        sh:message "Context pack {$this} names no observation with trc:packObservation. The observation is what joins this run to the L2 reading it acted on, so a binding without one records that a pack existed and nothing about what was in it." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:packObservation ;
+        sh:maxCount 1 ;
+        sh:message "Context pack {$this} names more than one observation with trc:packObservation. A pack carries one reading of one source; two named here is a binding to something no verifier ever accepted." ;
+    ] .
+
+## The span: one timed operation, inside one run.
+
+shpl:SpanShape
+    a sh:NodeShape ;
+    sh:targetClass trc:Span ;
+
+    sh:property [
+        sh:path trc:spanId ;
+        sh:minCount 1 ;
+        sh:message "Span {$this} carries no trc:spanId. The span id is what tells one operation from another within a run, and what joins this record to the same span in an APM." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:spanId ;
+        sh:maxCount 1 ;
+        sh:message "Span {$this} carries more than one trc:spanId. Only one of them can be the id the identifier was minted from, and nothing here says which." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:spanId ;
+        sh:pattern "^[0-9a-f]{16}$" ;
+        sh:message "Span {$this} carries the span id {?value}, which is not 16 lower-case hex characters. An abbreviated or re-cased span id does not compare equal to the one the tracer emitted, so the parent it names cannot be resolved." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:parentSpan ;
+        sh:maxCount 1 ;
+        sh:message "Span {$this} names more than one parent with trc:parentSpan. A span happened inside one other span; two parents is two trees claiming the same operation." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:parentSpan ;
+        sh:class trc:Span ;
+        sh:message "Span {$this} names {?value} as its parent, which is not a Span. A span hangs off the span it happened inside, not off the run itself - trc:ofRun already says which run it belongs to." ;
+    ] .
+
+## What a record belongs to.
+#
+# One shape for the three kinds a run holds more than one of. The run names its single
+# outcome itself, with trc:hasOutcome, so the outcome is not targeted here: an edge in
+# both directions between two nodes is a second place for them to disagree.
+
+shpl:OfRunShape
+    a sh:NodeShape ;
+    sh:targetClass trc:Span , trc:Metric , trc:Finding ;
+
+    sh:property [
+        sh:path trc:ofRun ;
+        sh:minCount 1 ;
+        sh:message "Trace record {$this} names no run with trc:ofRun. Evidence belonging to no run cannot be read, expired or counted, because every one of those questions is asked of a run." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:ofRun ;
+        sh:maxCount 1 ;
+        sh:message "Trace record {$this} names more than one run with trc:ofRun. One record is evidence about one execution; attributing it to two makes both of them unreadable." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:ofRun ;
+        sh:class trc:Run ;
+        sh:message "Trace record {$this} belongs to {?value}, which is not a Run. Evidence hangs off the execution it came from, not off the pack that execution was given or another record of it." ;
+    ] .
+
+## The outcome.
+
+shpl:OutcomeShape
+    a sh:NodeShape ;
+    sh:targetClass trc:Outcome ;
+
+    sh:property [
+        sh:path trc:outcomeStatus ;
+        sh:minCount 1 ;
+        sh:message "Outcome {$this} carries no trc:outcomeStatus. An outcome is the state a run finished in, so one that names no state records nothing at all." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:outcomeStatus ;
+        sh:maxCount 1 ;
+        sh:message "Outcome {$this} carries more than one trc:outcomeStatus. A run finished one way, and a fleet counted by these would count this run twice." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:outcomeStatus ;
+        sh:in ( "succeeded" "failed" "blocked" ) ;
+        sh:message "Outcome {$this} has the status {?value}, which is not one of 'succeeded', 'failed' or 'blocked'. The set is closed so that counting outcomes across a fleet is arithmetic rather than string matching, and so that a status cannot become somewhere to write a sentence." ;
+    ] .
+
+## The metric.
+
+shpl:MetricShape
+    a sh:NodeShape ;
+    sh:targetClass trc:Metric ;
+
+    sh:property [
+        sh:path trc:metricName ;
+        sh:minCount 1 ;
+        sh:message "Metric {$this} carries no trc:metricName. A number nothing names is a number nobody can compare against the same number from another run." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:metricName ;
+        sh:maxCount 1 ;
+        sh:message "Metric {$this} carries more than one trc:metricName. Two names on one measurement means two things were rolled up into one, and neither can be read back out." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:metricValue ;
+        sh:minCount 1 ;
+        sh:message "Metric {$this} carries no trc:metricValue. A named measurement with no value is a name, and the rollups are what survive the span detail they were computed from." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:metricValue ;
+        sh:maxCount 1 ;
+        sh:message "Metric {$this} carries more than one trc:metricValue. One measurement has one value; two is a reader picking, and nothing here says which was measured." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:metricValue ;
+        sh:datatype xsd:integer ;
+        sh:message "Metric {$this} has the value {?value}, which is not an xsd:integer. Measurements are whole numbers so the same measurement serializes to the same bytes on every machine, and so a value cannot be text with a number in it." ;
+    ] .
+
+## The finding.
+
+shpl:FindingShape
+    a sh:NodeShape ;
+    sh:targetClass trc:Finding ;
+
+    sh:property [
+        sh:path trc:findingCode ;
+        sh:minCount 1 ;
+        sh:message "Finding {$this} carries no trc:findingCode. The code is the whole of what was found: there is no description property to fall back on, because a description is where the tool output would arrive." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:findingCode ;
+        sh:maxCount 1 ;
+        sh:message "Finding {$this} carries more than one trc:findingCode. Two codes is two findings, and they are counted, filtered and acted on one at a time." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:findingSeverity ;
+        sh:minCount 1 ;
+        sh:message "Finding {$this} carries no trc:findingSeverity. Severity is how a reader decides whether to act, and a finding without one is read at whatever severity the reader is in the mood for." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:findingSeverity ;
+        sh:maxCount 1 ;
+        sh:message "Finding {$this} carries more than one trc:findingSeverity. One finding matters one amount, and a filter over these would return this one either way." ;
+    ] ;
+
+    sh:property [
+        sh:path trc:findingSeverity ;
+        sh:in ( "info" "warning" "error" ) ;
+        sh:message "Finding {$this} has the severity {?value}, which is not one of 'info', 'warning' or 'error'. The set is closed so a fleet can be filtered by it, and so a severity cannot become somewhere to write a sentence." ;
+    ] .
+
+## The L3 boundary: evidence never states truth.
+#
+# The rule the whole layer rests on, and the one most likely to be broken in a hurry.
+# It rests on the same mechanism as the two boundary shapes below it: the vocabularies
+# are loaded into named graphs of their own and this asks inside them, so only a
+# vocabulary can say what a vocabulary defines and no trace file can grant itself an
+# allowance by declaring a term.
+#
+# It is stated the opposite way round from shpt:L2BoundaryShape, which lists the
+# vocabularies an observed node may speak. A trace legitimately speaks PROV-O, which
+# this repository does not own and does not vendor, so a whitelist here would either
+# have to enumerate somebody else's vocabulary or refuse the standard the layer was
+# told to reuse. What L3 must never do is narrower and can be said exactly: assert a
+# business or a technical predicate.
+
+shpl:L3BoundaryShape
+    a sh:NodeShape ;
+    sh:targetClass trc:Run , trc:Span , trc:ContextPack , trc:Outcome , trc:Metric , trc:Finding ;
+
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Trace node {$this} asserts {?property}, which is a business or technical predicate. A trace is evidence: it records what happened, never what the organization declared or what a source was observed to hold. Naming an L1 or L2 node is allowed and is what trc:touched and trc:findingAbout are for; stating something about one is not, and never becomes so because the run turned out to be right." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/trace> ;
+        sh:select """
+            SELECT $this ?property
+            WHERE {
+                $this ?property ?object .
+                GRAPH ?vocabulary { ?property rdfs:isDefinedBy ?vocabulary }
+                FILTER ( ?vocabulary IN (
+                    <https://semantic-layer.19h09.co/vocab/biz> ,
+                    <https://semantic-layer.19h09.co/vocab/tech>
+                ) )
+            }
+        """ ;
+    ] .
+
+## The layer boundary, drawn where the files are rather than where the terms are.
+#
+# The mirror of the L1/L2 pair in ontology/shapes/tech.ttl, and it works the same way:
+# the loader puts a file in the curated, observed or evidence graph based on the
+# directory it sits in, and Turtle has no syntax for naming a graph, so a file cannot
+# claim to be another layer. See graph.data_graph.
+#
+# Neither message names the offending property, on purpose: every triple about a node
+# in the wrong graph is equally wrong, and the fix is to move the file rather than to
+# remove a line.
+
+shpl:TraceFactOutsideTheEvidenceGraphShape
+    a sh:NodeShape ;
+    sh:targetClass trc:Run , trc:Span , trc:ContextPack , trc:Outcome , trc:Metric , trc:Finding ;
+
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Trace node {$this} is committed outside the evidence graph. Recorded evidence belongs under ontology/instances/fixtures/trace/, where it is loaded as evidence and judged by the boundary that keeps it from stating truth; a run filed as curated business truth or as an observation is a record of what happened wearing the authority of a fact." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/trace> ;
+        sh:select """
+            SELECT DISTINCT $this
+            WHERE {
+                GRAPH ?graph { $this ?property ?object }
+                FILTER ( ?graph != <https://semantic-layer.19h09.co/graph/l3-evidence> )
+            }
+        """ ;
+    ] .
+
+shpl:TruthInTheEvidenceGraphShape
+    a sh:NodeShape ;
+    sh:targetClass biz:Goal , biz:Capability , biz:Actor , biz:Role , biz:Policy , biz:Assignment ,
+                   tech:Source , tech:Observation , tech:Artifact ;
+
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Truth-bearing node {$this} is committed in the evidence graph. A trace records what happened and may point at anything, but the thing it points at is declared or observed elsewhere: writing it here would let a run author the facts it is then judged against, which is the one thing the boundary between the layers exists to prevent." ;
+        sh:prefixes <https://semantic-layer.19h09.co/shapes/trace> ;
+        sh:select """
+            SELECT DISTINCT $this
+            WHERE {
+                GRAPH <https://semantic-layer.19h09.co/graph/l3-evidence> { $this ?property ?object }
+            }
+        """ ;
+    ] .

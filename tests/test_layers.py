@@ -1,4 +1,4 @@
-"""The two layers stay apart, and the one edge between them points one way.
+"""The three layers stay apart, and the one edge between the first two points one way.
 
 Three mechanisms hold that, and each is tested here rather than trusted. The loader
 puts a file in a named graph chosen by the directory it sits in, and no file can say
@@ -20,6 +20,7 @@ from semantic_layer import graph
 BIZ = "https://semantic-layer.19h09.co/vocab/biz#"
 TECH = "https://semantic-layer.19h09.co/vocab/tech#"
 CORE = "https://semantic-layer.19h09.co/vocab/core#"
+TRACE = "https://semantic-layer.19h09.co/vocab/trace#"
 
 
 ## The loader.
@@ -34,6 +35,8 @@ CORE = "https://semantic-layer.19h09.co/vocab/core#"
         (graph.TECHNICAL_DIR, graph.OBSERVED_GRAPH),
         (graph.TECHNICAL_VALID_FIXTURES_DIR, graph.OBSERVED_GRAPH),
         (graph.TECHNICAL_INVALID_FIXTURES_DIR, graph.OBSERVED_GRAPH),
+        (graph.TRACE_VALID_FIXTURES_DIR, graph.EVIDENCE_GRAPH),
+        (graph.TRACE_INVALID_FIXTURES_DIR, graph.EVIDENCE_GRAPH),
     ],
     ids=lambda value: getattr(value, "name", str(value)),
 )
@@ -51,22 +54,28 @@ def test_a_file_outside_the_instance_directories_is_refused(tmp_path):
         graph.instance_graph(tmp_path / "somewhere-else.ttl")
 
 
-def test_all_four_graphs_stay_distinguishable(committed_instances):
-    """L1 vocabulary, L1 data, L2 vocabulary and L2 data, each nameable on its own."""
+def test_every_graph_stays_distinguishable(committed_instances):
+    """Each vocabulary and each layer's data, nameable on its own and sharing nothing."""
     dataset = graph.data_graph(committed_instances)
     names = {
         "core vocabulary": URIRef("https://semantic-layer.19h09.co/vocab/core"),
         "business vocabulary": URIRef("https://semantic-layer.19h09.co/vocab/biz"),
         "technical vocabulary": URIRef("https://semantic-layer.19h09.co/vocab/tech"),
+        "execution-trace vocabulary": URIRef("https://semantic-layer.19h09.co/vocab/trace"),
         "curated business truth": graph.CURATED_GRAPH,
         "observed technical truth": graph.OBSERVED_GRAPH,
+        "recorded evidence": graph.EVIDENCE_GRAPH,
     }
     for what, name in names.items():
         assert len(dataset.graph(name)) > 0, f"the {what} graph is empty"
 
-    curated = dataset.graph(graph.CURATED_GRAPH)
-    observed = dataset.graph(graph.OBSERVED_GRAPH)
-    assert set(curated) & set(observed) == set()
+    data = [
+        set(dataset.graph(name))
+        for name in (graph.CURATED_GRAPH, graph.OBSERVED_GRAPH, graph.EVIDENCE_GRAPH)
+    ]
+    for index, triples in enumerate(data):
+        for other in data[index + 1 :]:
+            assert triples & other == set()
 
 
 def test_the_accepted_observation_is_loaded_as_observed(committed_instances):
@@ -123,6 +132,32 @@ def _defined_terms(vocabulary, namespace):
     }
 
 
+def test_the_trace_vocabulary_is_loaded_as_evidence(committed_instances):
+    """Evidence is where a run is recorded, and it is not either of the other two."""
+    dataset = graph.data_graph(committed_instances)
+    evidence = dataset.graph(graph.EVIDENCE_GRAPH)
+    assert list(evidence.subjects(RDF.type, graph.TRACE.Run))
+    for other in (graph.CURATED_GRAPH, graph.OBSERVED_GRAPH):
+        assert not list(dataset.graph(other).subjects(RDF.type, graph.TRACE.Run))
+
+
+def test_recorded_evidence_declares_no_business_or_technical_entity(committed_instances):
+    """A trace names L1 and L2 nodes, as objects, and authors none of them.
+
+    The same distinction the observed graph is held to, one layer up: being named is
+    not being asserted, and it is the difference the whole boundary rests on. The
+    committed trace fixture names an agent identity and a repository, so a change that
+    let a run author one would fail here as well as at the shape.
+    """
+    dataset = graph.data_graph(committed_instances)
+    evidence = dataset.graph(graph.EVIDENCE_GRAPH)
+    for subject in set(evidence.subjects()):
+        assert str(subject).startswith("https://semantic-layer.19h09.co/fixture/l3/")
+    named = {str(obj) for obj in evidence.objects()}
+    assert any(name.startswith("https://semantic-layer.19h09.co/fixture/biz/") for name in named)
+    assert any(name.startswith("https://semantic-layer.19h09.co/fixture/l2/") for name in named)
+
+
 def test_the_business_vocabulary_names_no_technical_term():
     """The route a breach would take, and the reason it is a review question.
 
@@ -152,9 +187,30 @@ def test_the_technical_vocabulary_crosses_upward_exactly_once():
     }
 
 
-def test_neither_vocabulary_defines_the_other_or_the_core():
+def test_the_trace_vocabulary_defines_no_term_of_another_layer():
+    """It reuses PROV-O and points at L1 and L2, and defines neither.
+
+    A trace vocabulary that declared a business or technical term would widen both
+    boundary shapes with no other edit anywhere, because each of them asks a vocabulary
+    what that vocabulary defines. Reusing prov: is not the same thing and is the point:
+    those terms are declared by PROV-O, which this repository does not own.
+    """
+    trace = _vocabulary("trace.ttl")
+    declared = list(trace.subjects(RDFS.isDefinedBy, None))
+    assert not [term for term in declared if str(term).startswith(BIZ)]
+    assert not [term for term in declared if str(term).startswith(TECH)]
+    prov = "http://www.w3.org/ns/prov#"
+    assert [term for term in trace.all_nodes() if str(term).startswith(prov)]
+
+
+def test_no_vocabulary_defines_another_or_the_core():
     """Each term is defined by exactly one vocabulary, which is what the shapes ask."""
-    for name, namespace in (("biz.ttl", BIZ), ("tech.ttl", TECH), ("core.ttl", CORE)):
+    for name, namespace in (
+        ("biz.ttl", BIZ),
+        ("tech.ttl", TECH),
+        ("core.ttl", CORE),
+        ("trace.ttl", TRACE),
+    ):
         vocabulary = _vocabulary(name)
         for subject in vocabulary.subjects(RDFS.isDefinedBy, None):
             assert str(subject).startswith(namespace), (

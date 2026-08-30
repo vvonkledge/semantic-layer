@@ -1,0 +1,1 @@
+Trace activity https://semantic-layer.19h09.co/fixture/l3/span/4bf92f3577b34da6a3ce929d0e0e4736/00f067aa0ba902b7 names more than one instant with prov:startedAtTime. Two beginnings is no beginning, and the duration a metric was rolled up from was computed against one of them.

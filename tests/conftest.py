@@ -7,9 +7,9 @@ from semantic_layer import graph
 def committed_instances() -> list:
     """Every instance file the repository asserts as loadable and valid.
 
-    Both layers, together, because that is the only arrangement that proves anything:
-    the crossing edge resolves, and the two graph-boundary shapes have both graphs in
-    front of them.
+    All three layers, together, because that is the only arrangement that proves
+    anything: the crossing edge resolves, and every graph-boundary shape has both the
+    graph it judges and the graphs it judges against in front of it.
     """
     return [
         path
@@ -18,6 +18,7 @@ def committed_instances() -> list:
             graph.TECHNICAL_DIR,
             graph.VALID_FIXTURES_DIR,
             graph.TECHNICAL_VALID_FIXTURES_DIR,
+            graph.TRACE_VALID_FIXTURES_DIR,
         )
         for path in graph.turtle_files(directory)
     ]
@@ -70,3 +71,20 @@ def no_network():
         yield
     finally:
         socket.socket = original
+
+
+@pytest.fixture(scope="session")
+def accepted_pack():
+    """The context pack this repository commits, read from disk as a consumer gets it."""
+    from semantic_layer import pack
+
+    return pack.read(pack.pack_dir())
+
+
+@pytest.fixture
+def store():
+    """A span store in memory, which is what a local file buys: no service to start."""
+    from semantic_layer.trace import TraceStore
+
+    with TraceStore.open(":memory:") as opened:
+        yield opened

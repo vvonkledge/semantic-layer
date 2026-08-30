@@ -1,11 +1,12 @@
 # Run `just` with no arguments to get the same check CI runs.
 default: check
 
-# Validate every committed graph in both layers, prove every negative fixture fails for
-# its stated reason, and assert every competency question's answer. Offline by
-# construction: the socket is taken away for the whole session, so a test that reaches
-# for the network fails saying so rather than passing on a machine that happens to be
-# online.
+# Validate every committed graph in all three layers, prove every negative fixture fails
+# for its stated reason, assert every competency question's answer, and exercise the L3
+# trace library end to end. Offline by construction: the socket is taken away for the
+# whole session, so a test that reaches for the network fails saying so rather than
+# passing on a machine that happens to be online. L3 needs no service either - its store
+# is a local SQLite file, and the suite opens it in memory.
 
 # Validate everything, and prove the guardrails still hold.
 test:

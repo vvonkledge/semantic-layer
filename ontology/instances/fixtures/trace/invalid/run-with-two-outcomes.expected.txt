@@ -1,0 +1,1 @@
+Run https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736 names more than one outcome with trc:hasOutcome. A run ended one way; two recorded outcomes leave a reader to pick, and counting them across a fleet stops meaning anything.

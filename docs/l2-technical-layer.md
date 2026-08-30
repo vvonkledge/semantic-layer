@@ -374,13 +374,20 @@ every shape its rule cannot read and asserts the type and the sentence.
 question supplies its own: a check against "now" answers a different question every time
 it runs, and cannot be tested at all.
 
+The pack is also the join key between this layer and the evidence above it. A recorded
+run names the exact pack it was handed, by the digest of each of its halves, and
+`semantic_layer.trace` gets those digests by running this same verifier rather than by
+believing the caller - so "what did that run know" and "which reading of GitHub was it
+looking at" are one question with one answer. See
+[l3-execution-trace.md](l3-execution-trace.md).
+
 ## What is deliberately not here
 
 No second repository and no organization crawl - this is one source, chosen because it
 is public, bounded and rich enough to prove the whole path. No webhooks, no polling, no
 daemon, no server, no database. No write-back of any kind: nothing here sends anything
 to GitHub but a GET. No authentication, no secrets, no private repositories. No workflow
-runs, jobs or deployments - those are execution traces, which is L3 and does not exist.
+runs, jobs or deployments - those are execution traces, and an execution trace is L3.
 
 And no business content inferred from any of it. `ontology/instances/business/` is no
 longer empty, and nothing in this layer is why: what is there was declared by the

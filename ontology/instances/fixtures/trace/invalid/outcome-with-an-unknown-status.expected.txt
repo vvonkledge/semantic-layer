@@ -1,0 +1,1 @@
+Outcome https://semantic-layer.19h09.co/fixture/l3/outcome/4bf92f3577b34da6a3ce929d0e0e4736 has the status cancelled, which is not one of 'succeeded', 'failed' or 'blocked'. The set is closed so that counting outcomes across a fleet is arithmetic rather than string matching, and so that a status cannot become somewhere to write a sentence.

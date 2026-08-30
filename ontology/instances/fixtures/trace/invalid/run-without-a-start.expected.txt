@@ -1,0 +1,1 @@
+Trace activity https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736 names no instant with prov:startedAtTime. Evidence that cannot say when it happened cannot be ordered against anything else that did, which is most of what a trace is read for.

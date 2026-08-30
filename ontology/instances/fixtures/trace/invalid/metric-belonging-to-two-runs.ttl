@@ -1,0 +1,54 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH, AND NOT A RUN THAT HAPPENED.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix trc:  <https://semantic-layer.19h09.co/vocab/trace#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# One measurement attributed to two executions, which makes both of them unreadable.
+
+<https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736>
+    a trc:Run , prov:Activity ;
+    trc:traceId "4bf92f3577b34da6a3ce929d0e0e4736" ;
+    trc:usedPack <https://semantic-layer.19h09.co/fixture/l3/pack/1a7f9c0e8b6d4f2a3c5e7d9b1f3a5c7e9d1b3f5a7c9e1d3b5f7a9c1e3d5b7f9a> ;
+    trc:hasOutcome <https://semantic-layer.19h09.co/fixture/l3/outcome/4bf92f3577b34da6a3ce929d0e0e4736> ;
+    prov:startedAtTime "2026-08-30T09:00:00Z"^^xsd:dateTime ;
+    prov:endedAtTime "2026-08-30T09:00:12Z"^^xsd:dateTime .
+
+<https://semantic-layer.19h09.co/fixture/l3/pack/1a7f9c0e8b6d4f2a3c5e7d9b1f3a5c7e9d1b3f5a7c9e1d3b5f7a9c1e3d5b7f9a>
+    a trc:ContextPack , prov:Entity ;
+    trc:contentDigest "sha256:0f4b3ac8ff35b1e08c8a2d7d1e0f4b0f43e2a11c0f4b3ac8ff35b1e08c8a2d7d" ;
+    trc:manifestDigest "sha256:558d5f95a97775de2d786eee7ac1f4eb24c2f80f558d5f95a97775de2d786eee" ;
+    trc:packObservation <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com/observation/3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed> ;
+    trc:packSource <https://semantic-layer.19h09.co/fixture/l2/github/api-github-com> ;
+    trc:packTarget "vvonkledge/siana" .
+
+<https://semantic-layer.19h09.co/fixture/l3/outcome/4bf92f3577b34da6a3ce929d0e0e4736>
+    a trc:Outcome , prov:Entity ;
+    trc:outcomeStatus "succeeded" ;
+    prov:wasGeneratedBy <https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736> .
+
+<https://semantic-layer.19h09.co/fixture/l3/run/8e0c63257de34c92bf5d0a1e6b4f2a90>
+    a trc:Run , prov:Activity ;
+    trc:traceId "8e0c63257de34c92bf5d0a1e6b4f2a90" ;
+    trc:usedPack <https://semantic-layer.19h09.co/fixture/l3/pack/1a7f9c0e8b6d4f2a3c5e7d9b1f3a5c7e9d1b3f5a7c9e1d3b5f7a9c1e3d5b7f9a> ;
+    trc:hasOutcome <https://semantic-layer.19h09.co/fixture/l3/outcome/8e0c63257de34c92bf5d0a1e6b4f2a90> ;
+    prov:startedAtTime "2026-08-30T10:00:00Z"^^xsd:dateTime ;
+    prov:endedAtTime "2026-08-30T10:00:09Z"^^xsd:dateTime .
+
+<https://semantic-layer.19h09.co/fixture/l3/outcome/8e0c63257de34c92bf5d0a1e6b4f2a90>
+    a trc:Outcome , prov:Entity ;
+    trc:outcomeStatus "failed" ;
+    prov:wasGeneratedBy <https://semantic-layer.19h09.co/fixture/l3/run/8e0c63257de34c92bf5d0a1e6b4f2a90> .
+
+<https://semantic-layer.19h09.co/fixture/l3/metric/4bf92f3577b34da6a3ce929d0e0e4736/branches-read>
+    a trc:Metric , prov:Entity ;
+    trc:ofRun <https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736> ;
+    prov:wasGeneratedBy <https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736> ;
+    trc:metricName "branches-read" ;
+    trc:metricValue 2 ;
+    trc:metricUnit "count" ;
+    trc:ofRun <https://semantic-layer.19h09.co/fixture/l3/run/8e0c63257de34c92bf5d0a1e6b4f2a90> .

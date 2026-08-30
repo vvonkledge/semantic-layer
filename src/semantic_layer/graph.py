@@ -25,6 +25,8 @@ from rdflib.namespace import RDF, SH
 
 BIZ = Namespace("https://semantic-layer.19h09.co/vocab/biz#")
 TECH = Namespace("https://semantic-layer.19h09.co/vocab/tech#")
+TRACE = Namespace("https://semantic-layer.19h09.co/vocab/trace#")
+PROV = Namespace("http://www.w3.org/ns/prov#")
 
 ROOT = Path(__file__).resolve().parents[2]
 ONTOLOGY = ROOT / "ontology"
@@ -36,6 +38,8 @@ VALID_FIXTURES_DIR = INSTANCES / "fixtures" / "valid"
 INVALID_FIXTURES_DIR = INSTANCES / "fixtures" / "invalid"
 TECHNICAL_VALID_FIXTURES_DIR = INSTANCES / "fixtures" / "technical" / "valid"
 TECHNICAL_INVALID_FIXTURES_DIR = INSTANCES / "fixtures" / "technical" / "invalid"
+TRACE_VALID_FIXTURES_DIR = INSTANCES / "fixtures" / "trace" / "valid"
+TRACE_INVALID_FIXTURES_DIR = INSTANCES / "fixtures" / "trace" / "invalid"
 QUERIES_DIR = ROOT / "queries"
 SOURCES_DIR = ROOT / "sources"
 PACKS_DIR = ROOT / "packs"
@@ -47,6 +51,7 @@ VOCABULARIES = {
     URIRef("https://semantic-layer.19h09.co/vocab/core"): ONTOLOGY / "core.ttl",
     URIRef("https://semantic-layer.19h09.co/vocab/biz"): ONTOLOGY / "biz.ttl",
     URIRef("https://semantic-layer.19h09.co/vocab/tech"): ONTOLOGY / "tech.ttl",
+    URIRef("https://semantic-layer.19h09.co/vocab/trace"): ONTOLOGY / "trace.ttl",
 }
 
 #: L1: business truth the organization declared, true until it declares otherwise.
@@ -54,6 +59,10 @@ CURATED_GRAPH = URIRef("https://semantic-layer.19h09.co/graph/l1-curated")
 
 #: L2: technical truth a source was observed to hold at an instant, and which decays.
 OBSERVED_GRAPH = URIRef("https://semantic-layer.19h09.co/graph/l2-observed")
+
+#: L3: what a run was told, what it did, and what came of it. Evidence, never truth:
+#: nothing here is believed because it is written down, only because it happened.
+EVIDENCE_GRAPH = URIRef("https://semantic-layer.19h09.co/graph/l3-evidence")
 
 #: Which named graph each instance directory loads into. The classification is by
 #: directory and lives only here, because Turtle has no syntax for naming a graph:
@@ -66,10 +75,16 @@ INSTANCE_GRAPHS = {
     TECHNICAL_DIR: OBSERVED_GRAPH,
     TECHNICAL_VALID_FIXTURES_DIR: OBSERVED_GRAPH,
     TECHNICAL_INVALID_FIXTURES_DIR: OBSERVED_GRAPH,
+    TRACE_VALID_FIXTURES_DIR: EVIDENCE_GRAPH,
+    TRACE_INVALID_FIXTURES_DIR: EVIDENCE_GRAPH,
 }
 
 #: Every directory holding negative fixtures, one per layer.
-INVALID_FIXTURE_DIRS = (INVALID_FIXTURES_DIR, TECHNICAL_INVALID_FIXTURES_DIR)
+INVALID_FIXTURE_DIRS = (
+    INVALID_FIXTURES_DIR,
+    TECHNICAL_INVALID_FIXTURES_DIR,
+    TRACE_INVALID_FIXTURES_DIR,
+)
 
 
 class LayerError(ValueError):
@@ -102,7 +117,7 @@ def load(paths: Iterable[Path]) -> Graph:
 
 
 def data_graph(instances: Iterable[Path]) -> Dataset:
-    """The vocabularies plus the given instance files, with all four kept apart.
+    """The vocabularies plus the given instance files, each in a named graph of its own.
 
     A vocabulary belongs in the data graph: ``sh:class`` resolves subclasses against
     it, and each layer's boundary shape asks it which properties that layer defines.
@@ -111,14 +126,14 @@ def data_graph(instances: Iterable[Path]) -> Dataset:
     write to - two lines of ``rdfs:isDefinedBy`` and a technical term is L1.
 
     So each vocabulary is loaded into a named graph of its own, named by its ontology
-    IRI. Instances are loaded into one of two more named graphs, curated or observed,
-    chosen by the directory the file sits in and nothing else. Turtle has no syntax
+    IRI. Instances are loaded into one of three more named graphs - curated, observed
+    or evidence - chosen by the directory the file sits in and nothing else. Turtle has no syntax
     for naming a graph, so an instance file can reach neither a vocabulary graph nor
     the other layer's data graph: what a vocabulary defines can only be said by a
     vocabulary, and which layer a fact belongs to can only be said by where it is
     committed.
 
-    That is what the two boundary shapes and the layer-separation shape rest on, and
+    That is what every boundary shape and every layer-separation shape rests on, and
     it is the whole mechanism. ``default_union`` keeps every unqualified pattern -
     target selection, ``sh:class`` - reading the whole thing, while a constraint that
     must not be answered by the data it is judging says ``GRAPH`` and asks the graph
@@ -150,6 +165,25 @@ def observed_data_graph(turtle: str) -> Dataset:
     for iri, path in VOCABULARIES.items():
         dataset.graph(iri).parse(path, format="turtle")
     dataset.graph(OBSERVED_GRAPH).parse(data=turtle, format="turtle")
+    return dataset
+
+
+def evidence_data_graph(evidence: Graph) -> Dataset:
+    """The vocabularies plus one projected trace summary, as ``data_graph`` would load it.
+
+    The L3 counterpart of ``observed_data_graph``, and it exists for the same reason: a
+    summary is projected from the span store and has no directory to be classified by,
+    so naming the evidence graph explicitly here is the honest way to say that the
+    caller chose the layer. It takes a graph rather than a block of Turtle because the
+    projector produces one, and round-tripping it through text would test the
+    serializer rather than the projection.
+    """
+    dataset = Dataset(default_union=True)
+    for iri, path in VOCABULARIES.items():
+        dataset.graph(iri).parse(path, format="turtle")
+    target = dataset.graph(EVIDENCE_GRAPH)
+    for triple in evidence:
+        target.add(triple)
     return dataset
 
 

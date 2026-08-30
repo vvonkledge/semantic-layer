@@ -139,3 +139,28 @@ person cannot recognize it - because a name a person recognizes is a name somebo
 change, and a rename that mints a second entity is the failure this rule exists to
 prevent. The readable part is an attribute: `tech:repositoryPath` says where the
 repository is reachable today, and a refresh rewrites it while the identifier stays put.
+
+## What L3 does instead
+
+An L1 slug is authored by a person; an L2 local id is issued by a system somewhere else.
+An L3 identifier is neither. A run happened here, and this layer is the only system that
+will ever name it - so there is no scope beyond the layer itself, and nothing anywhere in
+one was typed by a human:
+
+```
+https://semantic-layer.19h09.co/l3/span/4bf92f35...4736/00f067aa0ba902b7
+\_________________________________/\___/\______________/\______________/
+          permanent base            kind     trace id        span id
+```
+
+The trace id and the span id are the OpenTelemetry ones, carried verbatim, so the
+evidence here and the trace in whatever tracing the fleet already runs are the same run
+rather than two divergent records of it. Everything else is named by the run it belongs
+to - the outcome by the trace id, a metric by the trace id and its name, a finding by
+the trace id and its position - except the context pack, which is named by a digest over
+the two halves of the bytes that were verified.
+
+That is what makes an L3 identifier **reproducible**: recording the same run twice mints
+exactly the same IRIs, which is how a replay is recognized as a replay instead of being
+written down as a second run. It is also why no clock, counter or random source appears
+anywhere in the minting. See [l3-execution-trace.md](l3-execution-trace.md).

@@ -1,0 +1,1 @@
+Run https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736 used https://semantic-layer.19h09.co/fixture/l3/outcome/4bf92f3577b34da6a3ce929d0e0e4736, which is not a ContextPack. The pack binding names the verified bytes the run was handed, not the observation inside them and not the run's own output.

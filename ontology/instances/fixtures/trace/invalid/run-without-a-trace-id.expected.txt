@@ -1,0 +1,1 @@
+Run https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736 carries no trc:traceId. The trace id is what joins this evidence to the tracing the fleet already runs; without it the record is a second, divergent observability system.

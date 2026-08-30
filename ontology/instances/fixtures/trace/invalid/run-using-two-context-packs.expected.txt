@@ -1,0 +1,1 @@
+Run https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736 names more than one context pack with trc:usedPack. Two packs is two answers to 'what did this run know', and a reader will act on the convenient one.

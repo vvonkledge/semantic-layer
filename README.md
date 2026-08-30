@@ -1,6 +1,7 @@
 # semantic-layer
 
-Two layers, in git, validated by SHACL and queried by SPARQL.
+Three layers. Two are files in git, validated by SHACL and queried by SPARQL; the third
+is recorded evidence in a local SQLite file, summarized back into the same vocabulary.
 
 **L1, the business layer:** what this organization does, who answers for it, what agents
 may be asked to do, and under which policy. True because the organization declared it,
@@ -9,7 +10,12 @@ and true until it declares otherwise.
 **L2, the technical layer:** what a system was observed to hold, when it was observed,
 and how long that is worth believing. True as of the last time somebody looked.
 
-There is no server and no database. The files are the layer.
+**L3, the execution trace:** what a run was told, what it did, and what came of it. True
+because it happened - and evidence, never truth: a trace changes neither of the layers
+below it, and stores structure and never raw payload.
+
+There is no server, no database and nothing to start. The files are the layers, and L3
+is a library over one local file.
 
 ## Start here
 
@@ -18,6 +24,8 @@ There is no server and no database. The files are the layer.
 - **[docs/l2-technical-layer.md](docs/l2-technical-layer.md)** - the source contract,
   identity, freshness, the refresh workflow, context packs, and what to do when a
   capture fails.
+- **[docs/l3-execution-trace.md](docs/l3-execution-trace.md)** - the trace API, the span
+  store, the privacy boundary, the ninety-day retention rule, and the PROV projection.
 - **[docs/identifiers.md](docs/identifiers.md)** - how an L1 entity is named, why the
   name is a URL that nothing serves, and why a name is never reused.
 - **[docs/evolution.md](docs/evolution.md)** - how a fact changes, how the vocabulary
@@ -31,7 +39,8 @@ just check    # lint too; this is what CI runs
 ```
 
 Requires [`uv`](https://docs.astral.sh/uv/) and [`just`](https://just.systems/). No
-credentials, no network access at test time, no services to start. The suite is offline
+credentials, no network access at test time, no services to start - including for L3,
+which is a library over a local SQLite file and not a collector. The suite is offline
 by construction: the socket is taken away for the whole session, so a test that reaches
 for the network fails saying so rather than passing on a machine that happens to be
 online.
@@ -51,8 +60,10 @@ ontology/
   core.ttl                    lifecycle terms shared by every layer
   biz.ttl                     the L1 business vocabulary
   tech.ttl                    the L2 technical vocabulary
+  trace.ttl                   the L3 execution-trace vocabulary, over PROV-O
   shapes/biz.ttl              SHACL: what a valid business graph looks like
   shapes/tech.ttl             SHACL: what a valid observed graph looks like
+  shapes/trace.ttl            SHACL: what a valid trace summary looks like
   instances/business/         curated L1 content the organization declared
   instances/technical/        accepted L2 truth, reconciled from a capture,
                               plus the one hand-authored edge that crosses up
@@ -69,15 +80,22 @@ src/semantic_layer/
   acquire.py                  the one place that touches the network
   pack.py                     building a context pack, and verifying one
   serialize.py                deterministic Turtle and N-Triples
+  trace/model.py              what a run may be written down as, and what it may not
+  trace/store.py              the append-only SQLite span store, and retention
+  trace/project.py            one recorded run -> its PROV-O summary
 tests/
 ```
 
 ## The line between the layers
 
 L1 never names a service, a repository, an environment or an endpoint. L2 never states
-who is accountable for anything. Exactly one term crosses, and it points **upward**: a
-technical artifact `tech:realizes` a business capability, never the reverse, because a
-capability has to survive the deletion of every system that ever delivered it.
+who is accountable for anything. L3 states nothing at all about either: it names their
+nodes and asserts nothing about them, because a trace is evidence and evidence does not
+get to change what it is evidence about.
+
+Exactly one term crosses between L1 and L2, and it points **upward**: a technical
+artifact `tech:realizes` a business capability, never the reverse, because a capability
+has to survive the deletion of every system that ever delivered it.
 
 That edge is authored by a human under review. No import writes one: a source knows what
 it contains, not what the organization answers for. There is one of them committed -
@@ -86,12 +104,14 @@ this layer observes delivers the capability `Orchestrate fleet delivery` - and i
 file of its own beside the generated graph, so the reviewed line and the imported ones
 are never mistaken for each other.
 
-The boundary is enforced three ways, and each has a negative fixture that commits the
-message it is rejected with. Two ask what a node may *say*, by asking each vocabulary -
-inside its own named graph - which properties it defines. The third asks where a node may
-be *said*: the loader puts a file in the curated or the observed graph based on the
-directory it sits in, and Turtle has no syntax for naming a graph, so a file cannot claim
-to be the other layer.
+The boundary is enforced by shapes, and each has a negative fixture that commits the
+message it is rejected with. Some ask what a node may *say*, by asking each vocabulary -
+inside its own named graph - which properties it defines: L1 and L2 each list the
+vocabularies they may speak, and L3 is told instead what it may never assert, since it
+legitimately speaks PROV-O, which this repository does not own. The rest ask where a node
+may be *said*: the loader puts a file in the curated, observed or evidence graph based on
+the directory it sits in, and Turtle has no syntax for naming a graph, so a file cannot
+claim to be another layer.
 
 ## What `just test` proves
 
@@ -134,7 +154,26 @@ to be the other layer.
    so the guarantee across the pair is narrower and stated as such: an interruption
    between them is refused by name rather than reconciled, and cannot move the accepted
    graph or the pack. None of it needs a socket to test, and none of it can have one.
-9. A context pack that is stale, tampered with, internally inconsistent, from another
+9. Recorded evidence never becomes truth and never changes it. An L3 node asserting a
+   business or technical predicate is refused, a trace committed outside the evidence
+   graph is refused, and a business or technical node committed as evidence is refused.
+   Recording a run, expiring it and projecting it twice leaves every file under
+   `ontology/`, `sources/` and `packs/` byte-identical.
+10. A run is recorded whole or not at all, against a pack it verified with the real
+   verifier and not on the caller's word. Duplicate or malformed identifiers, a parent
+   outside the run, a cycle, a reversed interval, a malformed instant and a run with no
+   spans are each refused with a sentence naming what to fix, and each leaves the store
+   empty. Replaying an identical run is a no-op; a trace id reused for anything else is
+   refused.
+11. Recorded runs and spans cannot be updated or selectively deleted, by this library or
+   by raw SQL. Retention removes full span detail strictly older than ninety days -
+   tested at the instant before the boundary, at it, and after it - keeps every rollup
+   indefinitely, and is safe to run again. The PROV summary is deterministic, readable by
+   a consumer that speaks only PROV-O, and still valid once the spans are gone.
+12. L3 cannot hold a payload. A prompt, a tool call, an HTTP body, five kilobytes of text
+   and a blob are each offered to every field that takes text and to the database
+   directly, and there is no free-form attribute or unknown key for one to arrive under.
+13. A context pack that is stale, tampered with, internally inconsistent, from another
    source or about another target is refused, against an instant the caller supplies
    rather than the clock. Every field the manifest carries is held - against the content,
    against a recount of it, or against a constant this reader is built for - and a
@@ -144,8 +183,9 @@ The whole suite is deterministic and runs in a few seconds.
 
 ## Scope
 
-This is phase 2: one complete L2 vertical slice against one real source - the public
-GitHub metadata for `vvonkledge/siana` - and, above it, the first real slice of L1.
+This is phase 3: one complete L3 vertical slice on top of a complete L2 slice against one
+real source - the public GitHub metadata for `vvonkledge/siana` - and, above both, the
+first real slice of L1.
 
 L1 now says one thing end to end: the outcome the organization wants, the capability it
 exercises to reach it, who answers for that, the agent it is delegated to, what that
@@ -155,4 +195,10 @@ repository below it contains, because a source knows what it holds and never wha
 organization answers for. One reviewed `tech:realizes` edge joins the two, and it points
 upward.
 
-There is no execution trace, no runtime, no server, no write-back, and no second source.
+L3 now records one run end to end: the exact pack it verified, its OpenTelemetry-shaped
+spans, its outcome, metrics and findings, a ninety-day retention boundary that removes
+only span detail, and a deterministic PROV-O summary that stays valid after they are
+gone. It is a library over one local SQLite file.
+
+There is no runtime, no server, no collector, no write-back, no proposal lifecycle, and
+no second source.

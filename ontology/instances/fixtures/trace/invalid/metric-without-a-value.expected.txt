@@ -1,0 +1,1 @@
+Metric https://semantic-layer.19h09.co/fixture/l3/metric/4bf92f3577b34da6a3ce929d0e0e4736/branches-read carries no trc:metricValue. A named measurement with no value is a name, and the rollups are what survive the span detail they were computed from.

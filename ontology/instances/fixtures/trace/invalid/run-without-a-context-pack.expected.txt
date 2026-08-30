@@ -1,0 +1,1 @@
+Run https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736 names no context pack with trc:usedPack. A run with no record of what it was told cannot prove what it knew, so a failure cannot be attributed between bad knowledge and bad reasoning and the evidence is unusable. This is the most important cardinality in the model.

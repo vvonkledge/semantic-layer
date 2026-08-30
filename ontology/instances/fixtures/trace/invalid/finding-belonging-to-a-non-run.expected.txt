@@ -1,0 +1,1 @@
+Trace record https://semantic-layer.19h09.co/fixture/l3/finding/4bf92f3577b34da6a3ce929d0e0e4736/1 belongs to https://semantic-layer.19h09.co/fixture/l3/pack/1a7f9c0e8b6d4f2a3c5e7d9b1f3a5c7e9d1b3f5a7c9e1d3b5f7a9c1e3d5b7f9a, which is not a Run. Evidence hangs off the execution it came from, not off the pack that execution was given or another record of it.

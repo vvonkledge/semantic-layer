@@ -1,0 +1,1 @@
+Trace activity https://semantic-layer.19h09.co/fixture/l3/span/4bf92f3577b34da6a3ce929d0e0e4736/00f067aa0ba902b7 names no instant with prov:endedAtTime. Recorded evidence is written when the activity is over, so one that never ended is a record of something still running - which is not evidence yet.

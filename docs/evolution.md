@@ -44,6 +44,15 @@ versioned by the git commit; `core:version` records a business-meaningful revisi
 one exists. A context pack carries the technical vocabulary's version in its manifest,
 because a consumer compiles against the vocabulary and has no other way to pin to it.
 
+**L3 is the exception, and it is never migrated in place.** Recorded spans are
+historical fact: they say what happened, and a migration that rewrote them would be
+editing evidence. So the span store carries a schema version, refuses to open a store
+written by another one, and a new span schema means a new store and a dual-write window
+rather than an `ALTER TABLE`. The vocabulary and shapes above it change like any other -
+additively, with a version bump for anything narrower - because those describe the
+summary a consumer reads, not the history it was projected from. See
+[l3-execution-trace.md](l3-execution-trace.md).
+
 Adding a property to a vocabulary automatically widens what that layer's entities may
 carry: each boundary shape asks the vocabulary which properties its layer defines, so
 there is no second allowlist to keep in step. Adding a *technical* term to the business

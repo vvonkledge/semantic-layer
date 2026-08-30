@@ -1,0 +1,1 @@
+Finding https://semantic-layer.19h09.co/fixture/l3/finding/4bf92f3577b34da6a3ce929d0e0e4736/1 has the severity critical, which is not one of 'info', 'warning' or 'error'. The set is closed so a fleet can be filtered by it, and so a severity cannot become somewhere to write a sentence.

@@ -1,0 +1,1 @@
+Finding https://semantic-layer.19h09.co/fixture/l3/finding/4bf92f3577b34da6a3ce929d0e0e4736/1 carries no trc:findingSeverity. Severity is how a reader decides whether to act, and a finding without one is read at whatever severity the reader is in the mood for.

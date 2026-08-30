@@ -1,0 +1,1 @@
+Run https://semantic-layer.19h09.co/fixture/l3/run/4bf92f3577b34da6a3ce929d0e0e4736 carries the trace id 4bf92f35, which is not 32 lower-case hex characters. An abbreviated or re-cased trace id does not compare equal to the one the tracer emitted, so nothing downstream can match it.

@@ -1,0 +1,1 @@
+Finding https://semantic-layer.19h09.co/fixture/l3/finding/4bf92f3577b34da6a3ce929d0e0e4736/1 carries more than one trc:findingCode. Two codes is two findings, and they are counted, filtered and acted on one at a time.

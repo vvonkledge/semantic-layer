@@ -1,0 +1,18 @@
+# TEST FIXTURE - NOT ORGANIZATIONAL TRUTH, AND NOT A RUN THAT HAPPENED.
+# A deliberate violation of exactly one constraint. See tests/test_negative_fixtures.py.
+
+@prefix biz:  <https://semantic-layer.19h09.co/vocab/biz#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix tech: <https://semantic-layer.19h09.co/vocab/tech#> .
+@prefix trc:  <https://semantic-layer.19h09.co/vocab/trace#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# A recorded outcome filed under the observed graph, where it would be read as
+# something a source was seen to hold rather than as something that happened here.
+# One node and not a whole summary: every node of a misfiled trace is misfiled for
+# the same reason, and a fixture trips one constraint once.
+
+<https://semantic-layer.19h09.co/fixture/l3/outcome/4bf92f3577b34da6a3ce929d0e0e4736>
+    a trc:Outcome , prov:Entity ;
+    trc:outcomeStatus "succeeded" .
