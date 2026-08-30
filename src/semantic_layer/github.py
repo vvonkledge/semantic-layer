@@ -127,8 +127,8 @@ def _show(value) -> str:
     """A value, quoted for a message and short enough to read.
 
     Source text reaches these messages, so it is truncated rather than pasted: a
-    hostile repository description is not going to be what a reader has to scroll past
-    to find the field name they need.
+    hostile repository name is not going to be what a reader has to scroll past to
+    find the field name they need.
     """
     text = repr(value)
     return text if len(text) <= 80 else text[:77] + "..."

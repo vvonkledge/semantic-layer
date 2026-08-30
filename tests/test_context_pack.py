@@ -307,8 +307,8 @@ def test_hostile_source_text_survives_the_whole_path():
 
     Each stage is covered on its own elsewhere, and this is the one that would have
     caught what none of those did: the reconciler wrote Turtle correctly, the pack wrote
-    it as N-Triples with Turtle's quoting, and a repository description with a line
-    break in it produced a pack that looked fine and that no consumer could parse. A
+    it as N-Triples with Turtle's quoting, and a repository name with a line break in
+    it produced a pack that looked fine and that no consumer could parse. A
     composition bug is only visible from the composition.
     """
     snapshot, digest = github.read_snapshot(github.snapshot_path())

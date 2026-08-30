@@ -18,9 +18,9 @@ from semantic_layer import serialize
 SUBJECT = URIRef("https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1")
 PREDICATE = URIRef("https://semantic-layer.19h09.co/vocab/tech#repositoryPath")
 
-#: What a repository description, a branch name or an account login can hold. GitHub
-#: does not promise any of these will be absent, and each one breaks a different half of
-#: a hand-written escaper.
+#: What a repository name, a branch name or an account login can hold - the free text
+#: the closed payload does read. GitHub does not promise any of these will be absent,
+#: and each one breaks a different half of a hand-written escaper.
 HOSTILE = [
     "a newline\nand another\r\n",
     'a "quoted" phrase',
