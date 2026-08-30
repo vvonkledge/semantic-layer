@@ -230,17 +230,23 @@ stays exactly where it is, and stops being fresh on its own schedule.
 
 ## When a capture fails
 
-Every failure leaves the last accepted observation untouched, and says what stopped it.
-Nothing is written until everything has been read, projected and hashed, and each write
-is one atomic replace.
+Every failure says what stopped it, and nothing is written until everything has been
+read, projected and hashed. Each write is one atomic replace, so no file is ever left
+half-written: what is on disk is whole bytes, either the new ones or the previous ones.
 
-A capture writes two files - the snapshot and its digest - and two renames are not one.
-Killed between them, the snapshot is new and the digest still commits the old bytes. That
-pair is refused by name before anything is reconciled, so nothing downstream believes it:
-the accepted graph and the context pack are written by other commands, from a snapshot
-that has already passed that check. Recovery is yours, and it is one of two commands:
-`just capture` again, or `git checkout` the pair - a capture writes into a git working
-tree, so the last accepted observation is still there to return to.
+A capture writes two files, though - the snapshot and its digest - and two renames are
+not one. So there are two outcomes, not one. Killed before or during the first write,
+both files are still the last accepted observation and there is nothing to clean up.
+Killed between the two, the snapshot is the new one and the digest still commits the old
+bytes: the pair disagrees, and `just reconcile` refuses it by name rather than
+reconciling it. That is what stops it being believed downstream - the accepted graph and
+the context pack are written by other commands, from a snapshot that has already passed
+that check, so neither can move because of an unfinished capture.
+
+Recovering from that pair is yours, and it is a choice rather than one command: run
+`just capture` again to land the new observation whole, or `git checkout` the snapshot
+and its digest together to return to the old one. A capture writes into a git working
+tree, so both observations are still there to choose between.
 
 | what happened | what you get |
 |---|---|
@@ -253,14 +259,16 @@ tree, so the last accepted observation is still there to return to.
 | a page of a collection failed | nothing, not the pages that did arrive |
 | pagination pointed off the API | refused |
 | a field the contract reads is missing | schema drift, named, as a decision about the contract |
-| the process died mid-write | the previous bytes, and no `.partial` file |
+| the process died during a write | that file's previous bytes, and no `.partial` file |
+| the process died between the two writes | a new snapshot beside the old digest, refused by name at `just reconcile` |
 
-Recovery is always the same: fix the cause and run `just capture` again. There is no
-partial state to clean up, and no half-written graph to reconcile.
+For every row but the last, nothing was written and recovery is to fix the cause and run
+`just capture` again. The last row is the one that leaves something behind, and it is
+recovered by the choice above.
 
-If a snapshot and its committed digest ever disagree, `just reconcile` refuses outright:
-one of them was edited after the other was written, and bytes nothing vouches for are
-not reconciled into truth.
+Whenever a snapshot and its committed digest disagree - because a write was interrupted,
+or because one of them was edited after the other was written - `just reconcile` refuses
+outright, and bytes nothing vouches for are not reconciled into truth.
 
 ## Context packs
 
