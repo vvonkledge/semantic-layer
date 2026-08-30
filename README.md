@@ -13,6 +13,8 @@ There is no server and no database. The files are the layer.
 
 ## Start here
 
+- **[ORDERS.md](ORDERS.md)** - what this repository is, how a change is validated, and
+  the boundaries a change must not cross. Read it before you change anything.
 - **[docs/l1-business-layer.md](docs/l1-business-layer.md)** - what the business model
   says, in business language.
 - **[docs/l2-technical-layer.md](docs/l2-technical-layer.md)** - the source contract,
@@ -26,8 +28,8 @@ There is no server and no database. The files are the layer.
 ## Run it
 
 ```sh
-just test     # validate everything, and prove the guardrails still hold
-just check    # lint too; this is what CI runs
+just check    # lint and the whole suite; this is what CI runs, and what delivery means
+just test     # the suite alone, for while you are working
 ```
 
 Requires [`uv`](https://docs.astral.sh/uv/) and [`just`](https://just.systems/). No
