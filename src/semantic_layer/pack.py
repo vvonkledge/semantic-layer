@@ -27,6 +27,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from rdflib import Graph, URIRef
+from rdflib.exceptions import ParserError
 from rdflib.namespace import RDF
 
 from semantic_layer import graph as layer
@@ -85,6 +86,11 @@ CONSTANT_FIELDS = ("graph", "vocabulary_version", "content_media_type")
 MANIFEST_FIELDS = frozenset(
     {VERSION_FIELD, *CONSTANT_FIELDS, *DERIVED_FIELDS, *(field for field, _, _ in CONTENT_FIELDS)}
 )
+
+#: The fields a manifest states as a number. Every other field of ``MANIFEST_FIELDS``
+#: is text, so the shape of each one is decided by this set rather than by a second
+#: list that could fall behind the first.
+COUNTED_FIELDS = frozenset({VERSION_FIELD, "content_bytes", "artifact_count"})
 
 
 class PackError(ValueError):
@@ -163,6 +169,33 @@ def _claimed(subgraph: Graph, subject: URIRef, predicate: URIRef, field: str) ->
     if field in INSTANT_FIELDS:
         return _instant(subgraph, subject, predicate, what)
     return str(_one(subgraph, subject, predicate, what))
+
+
+def _shaped(field: str, value):
+    """One manifest field, refused unless it is the shape its own rule reads.
+
+    A manifest is JSON somebody else wrote, so every field can arrive as any JSON
+    value. Each rule below this then does something a shape assumption is built into -
+    minting an RDF term, comparing an instant, counting bytes - and handing it a value
+    of another shape raises out of a library rather than refusing here. So the shape is
+    held first, for every field, and a hostile manifest gets the same named refusal as
+    a dishonest one.
+    """
+    counted = field in COUNTED_FIELDS
+    # bool is an int in Python, and `true` is neither a count nor a layout version.
+    held = (
+        isinstance(value, int) and not isinstance(value, bool)
+        if counted
+        else isinstance(value, str)
+    )
+    if not held:
+        raise PackError(
+            f"the manifest says {field} is {value!r}, and this reader reads "
+            f"{'a whole number' if counted else 'text'} there. A manifest is read before the "
+            f"content and is written by whoever sent the pack, so every field is held to the "
+            f"shape its rule reads before that rule runs."
+        )
+    return value
 
 
 def render(manifest: Mapping) -> bytes:
@@ -244,7 +277,17 @@ def verify(
     ``as_of`` is the consumer's own instant, supplied here rather than read from the
     clock, because a pack verified against "now" answers a different question every
     time it is run and cannot be tested at all.
+
+    Both halves of a pack are input a stranger wrote, so every way this refuses is a
+    ``PackError`` and there are no special cases that are not. A manifest field of the
+    wrong shape is held before any rule reads it, content that is not a graph is named
+    rather than raised out of rdflib, and a malformed ``as_of`` is refused the same way
+    a malformed field is. A consumer catching the documented type catches all of it.
     """
+    for name, value in (("content", content), ("manifest", manifest)):
+        if not isinstance(value, bytes):
+            raise PackError(f"{name} is {type(value).__name__}, and a pack half is the bytes")
+
     try:
         stated = json.loads(manifest)
     except json.JSONDecodeError as error:
@@ -252,7 +295,13 @@ def verify(
     if not isinstance(stated, dict):
         raise PackError("the manifest is not an object")
 
-    version = stated.get(VERSION_FIELD)
+    if VERSION_FIELD not in stated:
+        raise PackError(
+            f"the manifest declares no {VERSION_FIELD}, so nothing says which layout it is "
+            f"written in. A pack whose layout is unstated is refused rather than read as "
+            f"though it were this one."
+        )
+    version = _shaped(VERSION_FIELD, stated[VERSION_FIELD])
     if version != PACK_VERSION:
         raise PackError(
             f"the manifest declares pack_version {version!r} and this reader understands "
@@ -268,6 +317,11 @@ def verify(
             f"the manifest is refused: a field nothing holds is one a consumer reads and "
             f"believes on the strength of a verification that never looked at it."
         )
+    # Every remaining field held to its shape before any rule reads one, so a rule
+    # never receives a value it was not written for. Sorted, so a manifest hostile in
+    # more than one field is refused by the same field every time.
+    for field in sorted(MANIFEST_FIELDS - {VERSION_FIELD}):
+        _shaped(field, stated[field])
 
     for field, expected in _constants().items():
         if stated[field] != expected:
@@ -291,7 +345,19 @@ def verify(
             f"{stated['content_bytes']!r}."
         )
 
-    graph = Graph().parse(data=content, format="nt")
+    # The digests agree, so these are the bytes that were sent - and they still may not
+    # be a graph. rdflib answers that with its own parser exception, which a consumer
+    # written against the documented refusal does not catch, so it is translated here.
+    # Only the parse is guarded: a fault in this module's own code still surfaces.
+    try:
+        graph = Graph().parse(data=content, format="nt")
+    except (ParserError, UnicodeDecodeError) as error:
+        raise PackError(
+            f"the content is not N-Triples this reader can parse: {error}. The manifest "
+            f"agrees with these bytes, so nothing was tampered with in transit - what was "
+            f"sent is not a graph, and a manifest cannot be held against content that "
+            f"cannot be read."
+        ) from error
     observation = URIRef(stated["observation"])
     if (observation, RDF.type, TECH.Observation) not in graph:
         raise PackError(
@@ -336,7 +402,7 @@ def verify(
             f"this pack is about {stated['target']!r}, and {expect_target!r} was expected."
         )
 
-    if not INSTANT_PATTERN.fullmatch(as_of):
+    if not isinstance(as_of, str) or not INSTANT_PATTERN.fullmatch(as_of):
         raise PackError(
             f"as_of is {as_of!r}, which is not a UTC instant spelled YYYY-MM-DDTHH:MM:SSZ"
         )

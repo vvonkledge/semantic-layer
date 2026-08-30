@@ -286,10 +286,143 @@ def test_a_manifest_that_is_not_json_is_refused(committed):
         pack.verify(committed.content, b"{", as_of=_within(committed))
 
 
-def test_a_comparison_instant_that_is_not_an_instant_is_refused(committed):
-    """Rather than compared as a string and quietly answered."""
+## What a consumer must refuse without being handed a traceback.
+#
+# A forgery is a manifest that lies in a field's own vocabulary. The tests below are
+# the other half: a manifest that does not speak that vocabulary at all. Both halves
+# of a pack, and the instant the consumer supplies, are values somebody else wrote, so
+# every one of them can arrive as any JSON value or as no value. The documented answer
+# to all of it is one catchable ``PackError``, and a refusal that escapes as a library
+# exception is not caught by the `except pack.PackError` this repository tells a
+# consumer to write.
+
+
+#: Shapes no manifest field's rule can read. ``true`` is here because ``bool`` is an
+#: ``int`` in Python, so a counted field would otherwise accept it and compare equal
+#: to 1.
+HOSTILE_SHAPES = (None, True, [], {}, 1.5)
+
+
+def _hostile(field):
+    """The shapes that are wrong for one field, including the one the other kind reads."""
+    return (*HOSTILE_SHAPES, "1" if field in pack.COUNTED_FIELDS else 1)
+
+
+SHAPES = [(field, value) for field in sorted(pack.MANIFEST_FIELDS) for value in _hostile(field)]
+
+
+def test_every_manifest_field_has_a_shape_this_suite_drives():
+    """The shape rule is derived from the field set, and this is what says so.
+
+    ``COUNTED_FIELDS`` names the numbers and every other manifest field is text, so a
+    field added to the manifest gets a shape rule without anybody remembering to write
+    one - and gets driven below without anybody remembering to add it.
+    """
+    assert pack.COUNTED_FIELDS < pack.MANIFEST_FIELDS
+    assert {field for field, _ in SHAPES} == pack.MANIFEST_FIELDS
+
+
+@pytest.mark.parametrize(
+    ("field", "value"), SHAPES, ids=[f"{field}={value!r}" for field, value in SHAPES]
+)
+def test_a_manifest_field_of_another_shape_is_refused_by_name(committed, field, value):
+    """Every field, against every shape its rule cannot read.
+
+    This is the class QA reproduced: ``"observation": null`` and ``"observation": 5``
+    reached ``URIRef`` and came back out of rdflib as ``TypeError``, which the refusal
+    a consumer is told to catch does not catch. A shape is not a lie about the source -
+    it is a value no rule below was written for - so it is refused before any rule runs
+    and the message names the field and what belongs there.
+    """
+    with pytest.raises(pack.PackError) as refusal:
+        pack.verify(
+            committed.content,
+            amended(committed, **{field: value}).manifest,
+            as_of=_within(committed),
+        )
+    reads = "a whole number" if field in pack.COUNTED_FIELDS else "text"
+    assert f"the manifest says {field} is {value!r}" in str(refusal.value)
+    assert f"this reader reads {reads} there" in str(refusal.value)
+
+
+def test_a_manifest_that_does_not_say_which_layout_it_is_in_is_refused(committed):
+    manifest = json.loads(committed.manifest)
+    del manifest[pack.VERSION_FIELD]
+    with pytest.raises(pack.PackError, match="declares no pack_version"):
+        pack.verify(committed.content, pack.render(manifest), as_of=_within(committed))
+
+
+#: Comparison instants that are not one: four shapes no pattern can be matched
+#: against, and five strings that are not the one spelling a pack is compared in.
+HOSTILE_INSTANTS = [
+    None,
+    5,
+    [],
+    {},
+    "",
+    "2026-08-30",
+    "not-an-instant",
+    "2026-08-30T07:00:00",
+    "2026-08-30T07:00:00+02:00",
+]
+
+
+@pytest.mark.parametrize("as_of", HOSTILE_INSTANTS, ids=repr)
+def test_a_comparison_instant_that_is_not_an_instant_is_refused(committed, as_of):
+    """Rather than compared as a string and quietly answered.
+
+    A timezone-less instant and one carrying an offset are refused with the malformed
+    ones on purpose: a pack is compared by string against a manifest this repository
+    spells one way, so an instant spelled another way is a question this cannot answer
+    rather than one it should answer approximately.
+    """
     with pytest.raises(pack.PackError, match="not a UTC instant"):
-        pack.verify(committed.content, committed.manifest, as_of="2026-08-30")
+        pack.verify(committed.content, committed.manifest, as_of=as_of)
+
+
+def test_an_explicit_utc_instant_still_decides_freshness(committed):
+    """The guard above refuses shapes, and changes nothing about the instants that pass."""
+    stated = json.loads(committed.manifest)
+    assert pack.verify(committed.content, committed.manifest, as_of=stated["observed_at"])
+    with pytest.raises(pack.PackError, match="stops being worth believing"):
+        pack.verify(committed.content, committed.manifest, as_of=stated["fresh_until"])
+
+
+#: Content whose bytes are not a graph. Each is paired with a manifest that agrees with
+#: it, so the digest check passes and what refuses is the parse: content that fails to
+#: parse must be refused as content this reader cannot read, not as content that was
+#: tampered with.
+UNPARSEABLE = [
+    ("prose", b"this is not n-triples\n"),
+    ("a truncated triple", b"<https://example.org/a> <https://example.org/b>\n"),
+    ("turtle", b"@prefix ex: <https://example.org/> .\nex:a ex:b ex:c .\n"),
+    ("bytes that are not utf-8", b"\xff\xfe<https://example.org/a>\n"),
+]
+
+
+@pytest.mark.parametrize(("what", "content"), UNPARSEABLE, ids=[what for what, _ in UNPARSEABLE])
+def test_content_that_is_not_a_graph_is_refused_rather_than_raised(committed, what, content):
+    """The pack is internally consistent and still not readable, which is its own answer.
+
+    Nothing here was tampered with in transit - the digest and the length agree with the
+    bytes - so the refusal cannot come from the checks above it. What arrived is not a
+    graph, and saying so is what tells a consumer they were sent the wrong thing rather
+    than a corrupted copy of the right one.
+    """
+    manifest = amended(
+        committed, content_digest=github.digest_of(content), content_bytes=len(content)
+    ).manifest
+    with pytest.raises(pack.PackError, match="not N-Triples this reader can parse"):
+        pack.verify(content, manifest, as_of=_within(committed))
+
+
+@pytest.mark.parametrize(
+    ("content", "manifest"), [(None, None), ("text", "text"), (bytearray(b""), bytearray(b""))]
+)
+def test_a_pack_half_that_is_not_bytes_is_refused(content, manifest):
+    """Both halves are read as bytes - hashed, measured, parsed - so both are held to it."""
+    with pytest.raises(pack.PackError, match="a pack half is the bytes"):
+        pack.verify(content, manifest, as_of="2026-08-30T07:00:00Z")
 
 
 def test_packing_something_that_is_not_an_observation_is_refused():
