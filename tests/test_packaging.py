@@ -43,6 +43,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 import zipfile
 from collections.abc import Iterable
 from email import message_from_string
@@ -503,32 +504,72 @@ def test_an_installed_command_needs_no_checkout_beside_it(installed, elsewhere):
     assert str(graph.ROOT) not in json.dumps(document)
 
 
-def test_the_installation_holds_what_the_wheel_declares(installed, carried):
+def _locked_runtime_names() -> set[str]:
+    """Everything a resolver puts under this project at runtime, read out of `uv.lock`.
+
+    The second opinion the test below needs. `_runtime_closure` walks installed metadata
+    to decide what to copy, so asking it what it copied would prove only that it agrees
+    with itself: the extras half of it could go back to being dropped and the answer
+    would shrink to match. `uv.lock` is the same question answered by the resolver that
+    wrote it, from the same declarations, before any of this ran.
+
+    Edges carrying an environment marker are left out. Whether one applies depends on the
+    interpreter, and what is wanted here is a floor that every interpreter has to clear
+    rather than a recount of the resolution.
+    """
+    lock = tomllib.loads((graph.ROOT / "uv.lock").read_text(encoding="utf-8"))
+    packages = {package["name"]: package for package in lock["package"]}
+    names: set[str] = set()
+    seen: set[tuple[str, str | None]] = set()
+    queue: list[tuple[str, str | None]] = [("semantic-layer", None)]
+    while queue:
+        name, extra = queue.pop()
+        if (name, extra) in seen:
+            continue
+        seen.add((name, extra))
+        package = packages[name]
+        edges = (
+            package["optional-dependencies"][extra]
+            if extra is not None
+            else package.get("dependencies", ())
+        )
+        for edge in edges:
+            if "marker" in edge:
+                continue
+            names.add(edge["name"])
+            queue.append((edge["name"], None))
+            queue.extend((edge["name"], asked) for asked in edge.get("extra", ()))
+    return names
+
+
+def test_the_installation_holds_every_runtime_dependency(installed):
     """Installed there, rather than importable from wherever this suite happens to run.
 
     `importlib.metadata` answers out of the `.dist-info` directories beside the code, so
     asking the installed interpreter for a version is asking whether each distribution
-    arrived whole rather than as a directory of modules. The names come out of the wheel
-    so a dependency added to `pyproject.toml` is covered without being written here too;
-    the two it must always declare are named, because a list read out of the artifact
-    would pass just as happily if the artifact declared nothing.
+    arrived whole rather than as a directory of modules that happens to import.
+
+    Every one of them, because the ones nothing names directly are where an installation
+    goes quietly wrong: `pyshacl` requires `rdflib[html]`, and an environment without
+    `html5rdf` still runs every other test in this file, because `rdflib` catches the
+    ImportError and drops rdf:HTML literal support rather than failing.
     """
-    declared = [name for _, name, _ in _wheel_requires(carried)]
-    assert {"rdflib", "pyshacl"} <= set(declared), declared
+    names = sorted(_locked_runtime_names())
+    assert {"rdflib", "pyshacl", "html5rdf"} <= set(names), names
     finished = subprocess.run(
         [
             str(Path(installed).parent / "python"),
             "-c",
             "import importlib.metadata as found, sys\n"
             "print('\\n'.join(found.version(name) for name in sys.argv[1:]))",
-            *declared,
+            *names,
         ],
         env={"PATH": "/usr/bin:/bin"},
         capture_output=True,
         text=True,
     )
     assert finished.returncode == 0, finished.stderr
-    assert len(finished.stdout.split()) == len(declared)
+    assert len(finished.stdout.split()) == len(names)
 
 
 @pytest.mark.parametrize(
