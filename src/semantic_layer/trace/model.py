@@ -69,6 +69,16 @@ OUTCOME_STATUSES = ("succeeded", "failed", "blocked")
 FINDING_SEVERITIES = ("info", "warning", "error")
 METRIC_UNITS = ("count", "millisecond", "byte")
 
+#: The widest a measurement may be, which is what the store's INTEGER column holds:
+#: SQLite's signed sixty-four bits. It is bounded here for the same reason
+#: ``IRI_MAX_LENGTH`` is - Python's integers have no width at all, so a value past this
+#: is refused by sqlite3 as an ``OverflowError`` raised from inside the transaction,
+#: which is neither a ``TraceError`` nor a sentence naming what to fix. No measurement
+#: a run makes comes near it; a number that does is a counter that wrapped or a value
+#: that was never a count.
+METRIC_VALUE_MIN = -(2**63)
+METRIC_VALUE_MAX = 2**63 - 1
+
 
 class TraceError(ValueError):
     """A run could not be recorded as it stands."""
@@ -420,6 +430,15 @@ def _metrics(run: Run) -> tuple[Metric, ...]:
                 f"whole number. Integers only, so the same measurement serializes to the same "
                 f"bytes on every machine and two summaries of one run can be compared by "
                 f"hashing them."
+            )
+        if not METRIC_VALUE_MIN <= metric.value <= METRIC_VALUE_MAX:
+            raise TraceError(
+                f"the metric {name!r} has the value {metric.value}, and this records a "
+                f"measurement between {METRIC_VALUE_MIN} and {METRIC_VALUE_MAX}. Python's "
+                f"integers have no width and the column that records this one has sixty-four "
+                f"bits, so a value past the bound is refused by SQLite from inside the "
+                f"transaction rather than named here. Nothing a run measures comes near it: a "
+                f"number that does is a counter that wrapped, or was never a count."
             )
         _one_of(metric.unit, METRIC_UNITS, f"the metric {name!r}'s unit")
     return metrics

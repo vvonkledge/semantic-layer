@@ -8,6 +8,7 @@ refused.
 """
 
 import json
+import sys
 from datetime import datetime, timedelta
 
 import pytest
@@ -278,9 +279,50 @@ def test_a_pack_about_another_target_is_refused(committed):
         )
 
 
-def test_a_manifest_that_is_not_json_is_refused(committed):
-    with pytest.raises(pack.PackError, match="not valid JSON"):
-        pack.verify(committed.content, b"{", as_of=_within(committed))
+#: Every way a JSON parser declines to return a value, which is not one exception type.
+#: Malformed input it can reject, a document nested past its own bound, and an integer
+#: literal past CPython's digit limit are a JSONDecodeError, a RecursionError and a bare
+#: ValueError respectively - and only the first is what anybody thinks of as "not JSON".
+#: The depth and the digit count are derived from the interpreter's own limits so the
+#: cases stay past them if either ever moves.
+UNPARSEABLE = {
+    "malformed": b"{",
+    "nested past the parser's bound": (
+        "[" * (sys.getrecursionlimit() * 20) + "]" * (sys.getrecursionlimit() * 20)
+    ).encode(),
+    "a number too long to convert": b'{"artifact_count": '
+    + b"1" * (sys.get_int_max_str_digits() + 100)
+    + b"}",
+}
+
+
+@pytest.mark.parametrize("payload", UNPARSEABLE.values(), ids=list(UNPARSEABLE))
+def test_a_manifest_no_parser_will_read_is_refused(committed, payload):
+    """One refusal for all of them, because the list of failures is not this reader's.
+
+    Guarding the parse family by family means adding a clause each time CPython grows a
+    way for `json.loads` not to return - which is how the digit limit got past a reader
+    that had already been taught about malformed input and about depth. Anything a parser
+    will not return a value for is a manifest that cannot be read, and a consumer
+    catching the documented `PackError` catches all of it.
+    """
+    with pytest.raises(pack.PackError, match="not JSON this reader can parse"):
+        pack.verify(committed.content, payload, as_of=_within(committed))
+
+
+def test_a_manifest_that_is_not_utf8_is_refused(committed):
+    """``json.loads`` takes bytes and picks the encoding itself, which is two problems.
+
+    Bytes that decode as nothing raise ``UnicodeDecodeError`` out of the json module,
+    which is a ``ValueError`` and not the ``PackError`` a consumer is told to catch. And
+    bytes that begin with a byte order mark are read as UTF-16, so a manifest could be
+    made to mean something other than what a reader looking at it would see. Both are
+    answered by decoding here: a manifest is UTF-8, or it is not a manifest.
+    """
+    with pytest.raises(pack.PackError, match="not UTF-8"):
+        pack.verify(committed.content, b"\xff\xfe{}", as_of=_within(committed))
+    with pytest.raises(pack.PackError, match="not UTF-8"):
+        pack.verify(committed.content, committed.manifest + b"\x80", as_of=_within(committed))
 
 
 ## What a consumer must refuse without being handed a traceback.

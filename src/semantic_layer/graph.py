@@ -28,10 +28,31 @@ TECH = Namespace("https://semantic-layer.19h09.co/vocab/tech#")
 TRACE = Namespace("https://semantic-layer.19h09.co/vocab/trace#")
 PROV = Namespace("http://www.w3.org/ns/prov#")
 
+#: The checkout this package was written in, which exists only when it is being read
+#: out of one. Everything reached through it is site data - a capture, an accepted
+#: instance file, a committed pack, a committed query - and none of it is packaged,
+#: because it is this installation's content rather than the library's.
 ROOT = Path(__file__).resolve().parents[2]
-ONTOLOGY = ROOT / "ontology"
+
+#: The vocabularies and shapes as an installed wheel carries them: beside the code,
+#: because they are the contract the code compiles against and a consumer who pip
+#: installed this has no checkout to read them out of.
+PACKAGED_ONTOLOGY = Path(__file__).resolve().parent / "_ontology"
+
+#: Which of the two this installation reads. There is one rule and it lives here: the
+#: packaged copy if there is one, and the checkout otherwise. A wheel has the first and
+#: not the second; a checkout has the second and not the first. Nothing else in this
+#: repository asks the question, so a build that forgets to package a vocabulary is a
+#: build that reads the checkout beside it and looks fine - which is exactly why
+#: tests/test_packaging.py builds the wheel and reads the answer out of it instead.
+ONTOLOGY = PACKAGED_ONTOLOGY if PACKAGED_ONTOLOGY.is_dir() else ROOT / "ontology"
 SHAPES_DIR = ONTOLOGY / "shapes"
-INSTANCES = ONTOLOGY / "instances"
+
+#: Instance files are never packaged and are always the checkout's: fixtures are the
+#: suite's, and business and technical instances are what this one organization
+#: declared and observed. A wheel carrying them would ship one site's facts to
+#: everybody who installed it.
+INSTANCES = ROOT / "ontology" / "instances"
 BUSINESS_DIR = INSTANCES / "business"
 TECHNICAL_DIR = INSTANCES / "technical"
 VALID_FIXTURES_DIR = INSTANCES / "fixtures" / "valid"

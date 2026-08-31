@@ -14,13 +14,15 @@ and how long that is worth believing. True as of the last time somebody looked.
 because it happened - and evidence, never truth: a trace changes neither of the layers
 below it, and stores structure and never raw payload.
 
-There is no server, no database and nothing to start. The files are the layers, and L3
-is a library over one local file.
+There is no server, no database and nothing to start. The files are the layers, L3 is a
+library over one local file, and the one thing another project runs is a command.
 
 ## Start here
 
 - **[ORDERS.md](ORDERS.md)** - what this repository is, how a change is validated, and
   the boundaries a change must not cross. Read it before you change anything.
+- **[docs/cli.md](docs/cli.md)** - the process boundary: the six commands another
+  project runs, the JSON they answer with, the exit codes, and what a consumer pins.
 - **[docs/l1-business-layer.md](docs/l1-business-layer.md)** - what the business model
   says, in business language.
 - **[docs/l2-technical-layer.md](docs/l2-technical-layer.md)** - the source contract,
@@ -39,6 +41,17 @@ is a library over one local file.
 just check    # lint and the whole suite; this is what CI runs, and what delivery means
 just test     # the suite alone, for while you are working
 ```
+
+And what another project runs, once this is installed:
+
+```sh
+semantic-layer pack verify --directory packs/github/vvonkledge-siana \
+    --as-of 2026-08-30T09:00:12Z --expect-target vvonkledge/siana
+```
+
+One JSON document on stdout, nothing on stderr, and an exit code that says whether the
+answer is complete, refused, or a call this contract does not define. See
+[docs/cli.md](docs/cli.md).
 
 Requires [`uv`](https://docs.astral.sh/uv/) and [`just`](https://just.systems/). No
 credentials, no network access at test time, no services to start - including for L3,
@@ -85,6 +98,9 @@ src/semantic_layer/
   trace/model.py              what a run may be written down as, and what it may not
   trace/store.py              the append-only SQLite span store, and retention
   trace/project.py            one recorded run -> its PROV-O summary
+  cli/                        the process boundary: what a consumer runs, and never
+                              imports; the response document and its exit codes, the
+                              closed JSON a run arrives as, and every byte read once
 tests/
 ```
 
@@ -183,8 +199,30 @@ claim to be another layer.
    rather than the clock. Every field the manifest carries is held - against the content,
    against a recount of it, or against a constant this reader is built for - and a
    manifest carrying a field nothing holds is refused rather than partly checked.
+14. The command answers with one JSON document and no prose, on success and refusal
+   alike, naming its own layout so a consumer can refuse one it does not know. Its three
+   exit codes mean what they say, its refusal kinds cannot disagree with them, and a
+   pack it exports is the exact bytes it verified. Nothing is inferred: no instant, no
+   store, no pack and no expectation is read from an environment or a clock.
+15. The run a caller hands in is closed JSON. An unknown key at any level, a key written
+   twice, a value of another shape, a number that is not finite, `true` where a count
+   belongs and a record missing a field are each refused before a store is opened, and a
+   refusal names the shape that arrived rather than what was in it. What a run may
+   *say* stays the model's to refuse, so there is no second rule to fall behind the
+   first.
+16. The wheel is built, read and installed into an environment of its own, and every
+   command is run from outside this repository against files a caller named. The
+   vocabularies and shapes the library reads are in it; this site's captures, accepted
+   instances, packs, queries and trace stores are not. The installation is done against
+   a uv cache with nothing in it, so a clean runner is what every run installs like, and
+   the commands are run where connecting and resolving are refused, so "this reaches no
+   network" is observed rather than inferred from a flag.
 
-The whole suite is deterministic and runs in a few seconds.
+The whole suite is deterministic and runs in well under a minute. Most of it is a few
+seconds of SHACL and SPARQL over small graphs; the rest is the packaging half, which
+builds the wheel, installs it into an environment of its own and runs every command out
+of it in a subprocess. That is the price of proving an installation rather than a
+checkout, and it is paid once per run.
 
 ## Scope
 
@@ -204,6 +242,10 @@ L3 now records one run end to end: the exact pack it verified, its OpenTelemetry
 spans, its outcome, metrics and findings, a ninety-day retention boundary that removes
 only span detail, and a deterministic PROV-O summary that stays valid after they are
 gone. It is a library over one local SQLite file.
+
+Above both, `semantic-layer` is the process boundary another project consumes: six
+commands, one versioned JSON document each, and no way in that requires importing
+anything from here. It is still not a service - it runs, answers and exits.
 
 There is no runtime, no server, no collector, no write-back, no proposal lifecycle, and
 no second source.

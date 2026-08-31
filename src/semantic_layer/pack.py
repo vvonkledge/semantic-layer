@@ -288,10 +288,37 @@ def verify(
         if not isinstance(value, bytes):
             raise PackError(f"{name} is {type(value).__name__}, and a pack half is the bytes")
 
+    # Decoded here rather than left to ``json.loads``, which takes bytes and decides the
+    # encoding for itself from a byte order mark - so a manifest beginning with two bytes
+    # somebody chose would be read as UTF-16 and mean something else entirely, and one
+    # that decodes as nothing at all would raise ``UnicodeDecodeError`` out of the json
+    # module, which is not the refusal a consumer was told to catch. A manifest is JSON,
+    # JSON here is UTF-8, and bytes that are not that are not a manifest.
     try:
-        stated = json.loads(manifest)
-    except json.JSONDecodeError as error:
-        raise PackError(f"the manifest is not valid JSON: {error}") from error
+        text = manifest.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise PackError(
+            f"the manifest is not UTF-8: {error}. Both halves of a pack are UTF-8, which is "
+            f"what the manifest's own content_media_type says of the other one."
+        ) from error
+
+    # The parse is guarded whole, by every family it can fail with, rather than failure
+    # by failure. `json` raises a JSONDecodeError for input it can reject, and it also
+    # raises a bare ValueError for an integer literal past CPython's digit limit and a
+    # RecursionError for a document nested past the parser's own bound - neither of
+    # which is malformed JSON, and the list is the interpreter's to extend rather than
+    # this reader's to keep up with. Anything a parser will not return a value for is a
+    # manifest that cannot be read, which is one refusal and not three. This mirrors how
+    # the content is guarded below; only the parse is inside the try, so a fault in this
+    # module's own code still surfaces.
+    try:
+        stated = json.loads(text)
+    except (ValueError, RecursionError) as error:
+        raise PackError(
+            f"the manifest is not JSON this reader can parse: {error}. A manifest is a flat "
+            f"object of named fields - so one that is malformed, nested past a parser's own "
+            f"bound, or carrying a number too long to convert is not one."
+        ) from error
     if not isinstance(stated, dict):
         raise PackError("the manifest is not an object")
 

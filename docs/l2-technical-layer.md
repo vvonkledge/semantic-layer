@@ -363,16 +363,22 @@ does not understand**. Each refusal is a test in `tests/test_context_pack.py`.
 
 That `except` is the whole of a consumer's error path, and it is meant to be. A pack is
 two files somebody else wrote, so it can be malformed as easily as it can be dishonest -
-a manifest field holding a number where text belongs, content that is not parseable
-N-Triples, an `as_of` that is not a UTC instant. Every one of those is refused as a
-`PackError` naming the field or the half at fault, before any of it reaches an RDF term
-or a parser. A refusal escaping as somebody's library exception would be caught by
-nothing a consumer was told to write, so the suite drives every manifest field against
-every shape its rule cannot read and asserts the type and the sentence.
+a manifest field holding a number where text belongs, a manifest that is not UTF-8 or
+that no JSON parser will return a value for, content that is not parseable N-Triples, an
+`as_of` that is not a UTC instant. Every one of those is refused as a `PackError` naming
+the field or the half at fault, before any of it reaches an RDF term or a parser. A
+refusal escaping as somebody's library exception would be caught by nothing a consumer
+was told to write, so the suite drives every manifest field against every shape its rule
+cannot read and asserts the type and the sentence.
 
 `as_of` is supplied rather than read from the clock for the same reason the competency
 question supplies its own: a check against "now" answers a different question every time
 it runs, and cannot be tested at all.
+
+A consumer in another project does the same thing without importing any of it:
+`semantic-layer pack verify` runs exactly this verifier and answers with one versioned
+JSON document, and `semantic-layer pack export` hands back the exact bytes that
+verified. See [cli.md](cli.md).
 
 The pack is also the join key between this layer and the evidence above it. A recorded
 run names the exact pack it was handed, by the digest of each of its halves, and

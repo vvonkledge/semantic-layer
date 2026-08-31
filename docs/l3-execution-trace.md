@@ -63,13 +63,22 @@ That is the whole public surface, and the list is deliberately short:
 |---|---|
 | `TraceStore.open(path)` | open or create a store; `:memory:` works, which is what the suite uses |
 | `store.record(run, pack=, as_of=, ...)` | verify the pack, validate the run, write it whole, return its IRI |
+| `store.write(run, pack=, as_of=, ...)` | the same write, reporting the pack binding and whether it wrote or replayed |
 | `store.read(trace_id)` | the run as the store holds it now |
 | `store.summary(trace_id)` | the PROV-O summary, as an rdflib graph |
 | `store.expire_spans(as_of=)` | remove span detail older than ninety days; return what it removed |
 | `store.trace_ids()` | every run recorded here |
 
 There is no update and no delete, and that is not an omission - see
-[append-only](#append-only-and-the-one-way-out).
+[append-only](#append-only-and-the-one-way-out). `write` is a second way in and not a
+second thing to do: it is `record`, saying what it did rather than only what it named,
+for a caller that has to answer for it. Nothing that edits a record was added with it.
+
+A consumer in another project uses none of this. It runs `semantic-layer trace record`,
+`get`, `project` and `expire`, gets one versioned JSON document back, and never imports
+a thing from here - see [cli.md](cli.md). That is deliberate: an import couples another
+project's release cadence to this one's internals, and the internals are exactly what
+this layer reserves the right to change.
 
 ## The six things it describes
 
@@ -324,7 +333,10 @@ shows up once something real is being recorded:
   characters once encoded - mints an identifier past the store's 300-character bound.
   That is refused by the writer, as a `TraceError` naming the length and what to do about
   it, rather than surfacing from inside the transaction as a SQLite integrity error
-  naming a column. The same holds for the agent identity a run is associated with.
+  naming a column. The same holds for the agent identity a run is associated with, and
+  for a metric value: Python's integers have no width and the column that records one
+  has sixty-four bits, so a measurement past that bound is refused by name here rather
+  than as an `OverflowError` raised by sqlite3 mid-write.
 
 ## Identifiers
 

@@ -248,6 +248,24 @@ class PackBinding:
 
 
 @dataclass(frozen=True)
+class Recorded:
+    """What one call to ``write`` did: the run it named, and whether it wrote anything.
+
+    ``created`` is the half a caller cannot work out for itself. Recording is idempotent
+    by design, so the same call twice returns the same identifier either way, and a
+    writer that retried after a timeout has no way to know whether the first attempt
+    landed. Asking the store beforehand does not answer it either: between that question
+    and the write, another process can record the same run. So the answer is the write's
+    own, taken from whether this call was the one that inserted the rows.
+    """
+
+    run: str
+    trace_id: str
+    created: bool
+    pack: PackBinding
+
+
+@dataclass(frozen=True)
 class RunRecord:
     """One recorded run as the store holds it now, which is not always as it was written.
 
@@ -411,6 +429,35 @@ class TraceStore:
         only if the complete content agrees: same spans, same references, same rollups,
         same pack. A trace id reused for anything else is refused, because two
         different runs under one id is a record that cannot be read at all.
+
+        ``write`` is the same call reporting what it did rather than only what it
+        named, for a caller that has to answer for it.
+        """
+        return self.write(
+            run,
+            pack=pack,
+            as_of=as_of,
+            expect_source=expect_source,
+            expect_target=expect_target,
+        ).run
+
+    def write(
+        self,
+        run: Run,
+        *,
+        pack: packs.Pack,
+        as_of: str,
+        expect_source: str | None = None,
+        expect_target: str | None = None,
+    ) -> Recorded:
+        """Record one whole run, and say what recording it did.
+
+        The same write ``record`` performs, reporting the pack binding it derived and
+        whether this call was the one that wrote the rows. A caller that has to answer
+        for what it did - a process boundary reporting to another program, rather than a
+        library call inside one - needs both, and neither can be recovered afterwards:
+        the binding is derived from bytes that are gone once the call returns, and a
+        replay is indistinguishable from a first write once it has been written.
         """
         validated = model.validate(run)
         if not isinstance(pack, packs.Pack):
@@ -427,13 +474,36 @@ class TraceStore:
             expect_source=expect_source,
             expect_target=expect_target,
         )
-        rows = _rows(validated, binding_of(pack, manifest))
-        stored = self._stored(validated.trace_id)
-        if stored is not None:
-            self._same_or_refuse(validated.trace_id, rows, stored)
-            return ids.mint_trace("run", validated.trace_id)
-        self._write(rows)
-        return ids.mint_trace("run", validated.trace_id)
+        binding = binding_of(pack, manifest)
+        return Recorded(
+            run=ids.mint_trace("run", validated.trace_id),
+            trace_id=validated.trace_id,
+            created=self._write_once(validated.trace_id, _rows(validated, binding)),
+            pack=binding,
+        )
+
+    def _write_once(self, trace_id: str, rows: dict[str, list[tuple]]) -> bool:
+        """Write the run if it is not recorded, hold it against what is there if it is.
+
+        The reread after an integrity error is the concurrent case, and it is the only
+        way to get the answer right. Two processes recording one run both see nothing
+        recorded, both write, and one of them loses the trace id's primary key - having
+        written nothing, because the transaction rolls back whole. What that process is
+        holding is now a replay of rows another process committed, so it is held against
+        them exactly as a replay arriving a second later would be: identical is a no-op,
+        and anything else is two runs under one identifier and is refused.
+        """
+        stored = self._stored(trace_id)
+        if stored is None:
+            try:
+                self._write(rows)
+                return True
+            except sqlite3.IntegrityError:
+                stored = self._stored(trace_id)
+                if stored is None:
+                    raise
+        self._same_or_refuse(trace_id, rows, stored)
+        return False
 
     def _same_or_refuse(self, trace_id: str, rows: dict, stored: dict) -> None:
         if self._expired_at(trace_id) is not None:
