@@ -132,19 +132,19 @@ would run - and reports what they bind to.
 
 ```json
 "result": {
-  "as_of": "2026-08-30T09:00:12Z",
+  "as_of": "2026-08-31T05:41:53Z",
   "pack": {
-    "identity": "e830ad25f822b1cd37207ba0987d50506b2fe399059b2315bc056a5118d8992e",
-    "content_digest": "sha256:69eeccc5...",
-    "manifest_digest": "sha256:ea95446f...",
-    "observation": "https://semantic-layer.19h09.co/l2/github/api-github-com/observation/8ff2a001...",
+    "identity": "b271fb16a4307c0a075b0b1929f8d656fd9d694f5739448d0d3708203ab2db76",
+    "content_digest": "sha256:33423f39...",
+    "manifest_digest": "sha256:f61447c2...",
+    "observation": "https://semantic-layer.19h09.co/l2/github/api-github-com/observation/2b50b84c...",
     "source": "https://semantic-layer.19h09.co/l2/github/api-github-com",
     "target": "vvonkledge/siana",
-    "observed_at": "2026-08-30T06:07:15Z",
-    "fresh_until": "2026-08-31T06:07:15Z",
-    "artifact_count": 3,
-    "content_bytes": 7911,
-    "manifest_bytes": 1183,
+    "observed_at": "2026-08-31T05:39:36Z",
+    "fresh_until": "2026-09-01T05:39:36Z",
+    "artifact_count": 5,
+    "content_bytes": 11523,
+    "manifest_bytes": 1184,
     "content_media_type": "application/n-triples",
     "vocabulary_version": "0.1.0",
     "graph": "https://semantic-layer.19h09.co/graph/l2-observed"
