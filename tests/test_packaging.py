@@ -136,10 +136,14 @@ def test_the_checkout_reads_the_checkout():
 
 ## Building the installation the commands are run out of.
 
-#: The head of a `Requires-Dist:` line, which is all of it this file needs: the version
-#: range was already settled by whoever installed this environment, and re-checking it
-#: here would be asking the lock a question the lock has answered.
-_REQUIREMENT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+#: The head of a `Requires-Dist:` line: the name, and the extras asked of it. Those two
+#: are all of it this file needs. The version range was already settled by whoever
+#: installed this environment, and re-checking it here would be asking the lock a
+#: question the lock has answered.
+_REQUIREMENT = re.compile(r"(?P<name>[A-Za-z0-9][A-Za-z0-9._-]*)\s*(?:\[(?P<extras>[^]]*)\])?")
+
+#: The extra a `Requires-Dist:` line is conditional on, when it is conditional on one.
+_EXTRA = re.compile(r"""extra\s*==\s*['"]([^'"]+)['"]""")
 
 #: Taken away from the installed environment, so that "this reaches no network" is a
 #: thing the commands below run under rather than a thing a flag on the installer
@@ -215,55 +219,76 @@ def _uv(uv: str, cold_cache: Path, *argv: str) -> None:
         )
 
 
-def _declared(requirements: Iterable[str] | None) -> list[str]:
-    """The names out of a distribution's `Requires-Dist` headers.
+#: One `Requires-Dist:` line, reduced to what walking it needs: the line itself, so a
+#: name that turns out to be missing can be held against whether it was conditional at
+#: all, the distribution's name, and the extras this requirement asks that distribution
+#: for.
+_Requirement = tuple[str, str, frozenset[str]]
 
-    Extras are dropped: they are what somebody else may ask for, not what this wheel
-    needs to answer, and an installation is evidence about the declared runtime
-    dependencies or it is evidence about nothing in particular.
+
+def _declared(requirements: Iterable[str] | None, asked: frozenset[str]) -> list[_Requirement]:
+    """What a distribution requires, given the extras it was itself asked for.
+
+    An extra nobody asked for is dropped: it is what somebody else may want, not what
+    this wheel needs to answer. An extra a requirement *did* ask for is not optional at
+    all - `pyshacl` requires `rdflib[html]` unconditionally, so `html5rdf` is as much
+    part of this wheel's runtime as `rdflib` is, and an installation missing it is
+    evidence about a different environment than the one a consumer would get.
     """
-    return [
-        match.group()
-        for requirement in requirements or ()
-        if "extra ==" not in requirement
-        if (match := _REQUIREMENT_NAME.match(requirement.strip()))
-    ]
+    found = []
+    for requirement in requirements or ():
+        match = _REQUIREMENT.match(requirement.strip())
+        gate = _EXTRA.search(requirement)
+        if match is None or (gate is not None and gate.group(1) not in asked):
+            continue
+        extras = (match.group("extras") or "").split(",")
+        found.append(
+            (requirement, match.group("name"), frozenset(filter(None, map(str.strip, extras))))
+        )
+    return found
 
 
-def _wheel_requires(carried: dict[str, bytes]) -> list[str]:
+def _wheel_requires(carried: dict[str, bytes]) -> list[_Requirement]:
     """What the built wheel declares it needs at runtime.
 
     Read out of the wheel rather than out of `pyproject.toml`, because the wheel is the
     artifact under test and its METADATA is what a consumer's installer would be handed.
     """
     name = next(name for name in carried if name.endswith(".dist-info/METADATA"))
-    return _declared(message_from_string(carried[name].decode("utf-8")).get_all("Requires-Dist"))
+    declaration = message_from_string(carried[name].decode("utf-8"))
+    return _declared(declaration.get_all("Requires-Dist"), frozenset())
 
 
 def _runtime_closure(carried: dict[str, bytes]) -> list[metadata.Distribution]:
     """Every distribution the built wheel needs, transitively, as this one already holds.
 
-    A name this interpreter has no distribution for is a requirement its markers exclude
-    - `importlib-metadata` below 3.12, and nothing else here today - and is skipped. A
-    name it excludes wrongly is not silently survivable: the command would fail to import
-    it, in every test below.
+    A name this interpreter has no distribution for is a requirement an environment
+    marker excludes - `isodate` and `importlib-metadata` on this one, both wanted only by
+    older Pythons - and it is skipped. Which of them those are is not written down here,
+    because a list of them is a thing that goes quietly out of date: what is checked is
+    that the requirement was conditional at all. An unconditional name this environment
+    does not have is a gap in the evidence rather than a skip, and it says so.
     """
     queue = _wheel_requires(carried)
-    seen: set[str] = set()
-    closure: list[metadata.Distribution] = []
+    seen: set[tuple[str, frozenset[str]]] = set()
+    closure: dict[str, metadata.Distribution] = {}
     while queue:
-        name = queue.pop()
+        requirement, name, extras = queue.pop()
         key = re.sub(r"[-_.]+", "-", name).lower()
-        if key in seen:
+        if (key, extras) in seen:
             continue
-        seen.add(key)
+        seen.add((key, extras))
         try:
             distribution = metadata.distribution(name)
         except metadata.PackageNotFoundError:
+            assert ";" in requirement, (
+                f"{name} is required unconditionally by this wheel and is not installed "
+                f"here, so this environment cannot hand it on: {requirement}"
+            )
             continue
-        closure.append(distribution)
-        queue.extend(_declared(distribution.metadata.get_all("Requires-Dist")))
-    return closure
+        closure[key] = distribution
+        queue.extend(_declared(distribution.metadata.get_all("Requires-Dist"), extras))
+    return list(closure.values())
 
 
 def _site_packages(environment: Path) -> Path:
@@ -488,7 +513,7 @@ def test_the_installation_holds_what_the_wheel_declares(installed, carried):
     the two it must always declare are named, because a list read out of the artifact
     would pass just as happily if the artifact declared nothing.
     """
-    declared = _wheel_requires(carried)
+    declared = [name for _, name, _ in _wheel_requires(carried)]
     assert {"rdflib", "pyshacl"} <= set(declared), declared
     finished = subprocess.run(
         [
