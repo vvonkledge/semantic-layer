@@ -213,7 +213,10 @@ claim to be another layer.
 16. The wheel is built, read and installed into an environment of its own, and every
    command is run from outside this repository against files a caller named. The
    vocabularies and shapes the library reads are in it; this site's captures, accepted
-   instances, packs, queries and trace stores are not.
+   instances, packs, queries and trace stores are not. The installation is done against
+   a uv cache with nothing in it, so a clean runner is what every run installs like, and
+   the commands are run where connecting and resolving are refused, so "this reaches no
+   network" is observed rather than inferred from a flag.
 
 The whole suite is deterministic and runs in well under a minute. Most of it is a few
 seconds of SHACL and SPARQL over small graphs; the rest is the packaging half, which

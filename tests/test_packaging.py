@@ -12,18 +12,41 @@ into a virtual environment of its own and runs every command from a working dire
 outside this repository with an environment that carries nothing from this one. What
 passes here passes for somebody who has only ever run ``pip install semantic-layer``.
 
-It stays offline like the rest of the suite: the build backend and the dependencies are
-already in this machine's cache because this environment was synced from them, and both
-commands below are told not to reach for anything else.
+It stays offline like the rest of the suite, and it is careful about how. Installing a
+wheel and running the installed command are two different questions, and only the second
+one is this project's boundary:
+
+* **Installing** has to put the wheel's declared runtime dependencies somewhere the
+  command can import them. This file does that from the distributions this interpreter
+  already has, because they are certainly here - the suite imports rdflib and pyshacl to
+  run at all. It does not resolve them, so it needs no index, no network and no cache;
+  every uv command below is handed a uv cache created empty by this session, which is
+  the condition a clean Linux runner installs under.
+* **Running** must reach the network from nowhere, and that is proved rather than
+  implied: the installed environment has connecting and resolving taken away from it,
+  the way `tests/conftest.py` takes this process's socket away, and a test below shows
+  the refusal firing in the environment the commands run in.
+
+An earlier version of this file installed with ``uv pip install --offline`` and let uv
+resolve the dependencies out of whatever the machine's global cache happened to hold.
+That passed wherever somebody had installed these packages by name before and failed on
+both clean CI runners, where ``uv run --frozen`` fills the cache with the locked
+artifacts and nothing that a resolver could search. It failed as five identical
+``CalledProcessError`` lines with uv's actual refusal captured and discarded, which is
+why every command started here reports what it printed.
 """
 
 import contextlib
-import inspect
 import json
+import os
+import re
 import shutil
 import subprocess
 import sys
 import zipfile
+from collections.abc import Iterable
+from email import message_from_string
+from importlib import metadata
 from pathlib import Path
 
 import pytest
@@ -111,7 +134,41 @@ def test_the_checkout_reads_the_checkout():
     assert graph.ONTOLOGY == graph.ROOT / "ontology"
 
 
-## What the wheel does once it is installed.
+## Building the installation the commands are run out of.
+
+#: The head of a `Requires-Dist:` line, which is all of it this file needs: the version
+#: range was already settled by whoever installed this environment, and re-checking it
+#: here would be asking the lock a question the lock has answered.
+_REQUIREMENT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+#: Taken away from the installed environment, so that "this reaches no network" is a
+#: thing the commands below run under rather than a thing a flag on the installer
+#: implies. Python imports `sitecustomize` at interpreter startup, so it reaches the
+#: installed command however that command is invoked. `tests/conftest.py` does the same
+#: to this process; neither reaches the other, because a subprocess gets its own socket
+#: module and that is the whole reason this exists.
+#:
+#: What is refused is reaching somewhere, not holding a socket object. Replacing the
+#: class the way conftest.py does is safe there only because `ssl` was imported long
+#: before the fixture ran; at interpreter startup it is not, and `ssl.SSLSocket`
+#: subclasses whatever `socket.socket` is by then. Denying the three calls that turn a
+#: socket into a connection is both the narrower change and the closer statement of
+#: what this environment is not allowed to do.
+_NO_SOCKETS = '''\
+"""Refuse a connection. Written into this environment by tests/test_packaging.py."""
+
+import socket
+
+
+def _refuse(*_args, **_kwargs):
+    raise RuntimeError("the installed command tried to reach the network")
+
+
+socket.socket.connect = _refuse
+socket.socket.connect_ex = _refuse
+socket.create_connection = _refuse
+socket.getaddrinfo = _refuse
+'''
 
 
 @pytest.fixture(scope="session")
@@ -122,28 +179,145 @@ def uv() -> str:
 
 
 @pytest.fixture(scope="session")
-def installed(uv, wheel, tmp_path_factory) -> Path:
-    """The command, installed into a virtual environment of its own and nothing else.
+def cold_cache(tmp_path_factory) -> Path:
+    """A uv cache with nothing in it, which is what a clean runner installs against.
 
-    Offline, from this machine's cache: everything the wheel depends on is already
-    there, because the environment this suite is running in was resolved from the same
-    lock. A dependency that is not cached is a failure here rather than a download.
+    Handed to every uv command in this file. Anything here that started needing a
+    package it had not been given fails on every machine rather than only on the ones
+    whose global cache happens to be cold, which is the failure this arrangement is
+    the repair for.
     """
+    cache = tmp_path_factory.mktemp("uv-cache")
+    assert not any(cache.iterdir()), f"{cache} was supposed to be empty"
+    return cache
+
+
+def _uv(uv: str, cold_cache: Path, *argv: str) -> None:
+    """One uv command, reporting what it printed rather than only what it exited with.
+
+    ``subprocess.run(check=True)`` raises a `CalledProcessError` that holds the output
+    and shows none of it, so an installer refusal arrives as a returncode and a command
+    line. That is how the failure this file repairs reached CI: five identical "returned
+    non-zero exit status 1" lines, and uv's actual sentence about what was missing
+    captured and thrown away.
+    """
+    finished = subprocess.run(
+        [uv, *argv],
+        capture_output=True,
+        text=True,
+        env=os.environ | {"UV_CACHE_DIR": str(cold_cache)},
+    )
+    if finished.returncode != 0:
+        raise AssertionError(
+            f"uv {' '.join(argv)} exited {finished.returncode}\n"
+            f"--- stdout ---\n{finished.stdout}"
+            f"--- stderr ---\n{finished.stderr}"
+        )
+
+
+def _declared(requirements: Iterable[str] | None) -> list[str]:
+    """The names out of a distribution's `Requires-Dist` headers.
+
+    Extras are dropped: they are what somebody else may ask for, not what this wheel
+    needs to answer, and an installation is evidence about the declared runtime
+    dependencies or it is evidence about nothing in particular.
+    """
+    return [
+        match.group()
+        for requirement in requirements or ()
+        if "extra ==" not in requirement
+        if (match := _REQUIREMENT_NAME.match(requirement.strip()))
+    ]
+
+
+def _wheel_requires(carried: dict[str, bytes]) -> list[str]:
+    """What the built wheel declares it needs at runtime.
+
+    Read out of the wheel rather than out of `pyproject.toml`, because the wheel is the
+    artifact under test and its METADATA is what a consumer's installer would be handed.
+    """
+    name = next(name for name in carried if name.endswith(".dist-info/METADATA"))
+    return _declared(message_from_string(carried[name].decode("utf-8")).get_all("Requires-Dist"))
+
+
+def _runtime_closure(carried: dict[str, bytes]) -> list[metadata.Distribution]:
+    """Every distribution the built wheel needs, transitively, as this one already holds.
+
+    A name this interpreter has no distribution for is a requirement its markers exclude
+    - `importlib-metadata` below 3.12, and nothing else here today - and is skipped. A
+    name it excludes wrongly is not silently survivable: the command would fail to import
+    it, in every test below.
+    """
+    queue = _wheel_requires(carried)
+    seen: set[str] = set()
+    closure: list[metadata.Distribution] = []
+    while queue:
+        name = queue.pop()
+        key = re.sub(r"[-_.]+", "-", name).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            distribution = metadata.distribution(name)
+        except metadata.PackageNotFoundError:
+            continue
+        closure.append(distribution)
+        queue.extend(_declared(distribution.metadata.get_all("Requires-Dist")))
+    return closure
+
+
+def _site_packages(environment: Path) -> Path:
+    found = sorted(environment.glob("lib/*/site-packages"))
+    assert len(found) == 1, f"expected one site-packages under {environment}, found {found}"
+    return found[0]
+
+
+def _install_runtime_dependencies(environment: Path, carried: dict[str, bytes]) -> None:
+    """Put the wheel's declared runtime dependencies into an environment of its own.
+
+    Copied out of the distributions this interpreter is running on, which is the one
+    source that is certainly present: this suite imports rdflib and pyshacl to start.
+    Resolving them instead would mean an index, and an index means either a network the
+    suite does not have or a global cache warmed by something outside this run - the
+    assumption that put five errors on a clean runner.
+
+    Console scripts are skipped. They live outside `site-packages`, they name the
+    interpreter that installed them, and no command below invokes one.
+    """
+    target = _site_packages(environment)
+    for distribution in _runtime_closure(carried):
+        files = distribution.files
+        assert files is not None, f"{distribution.metadata['Name']} records no files to copy"
+        for entry in files:
+            if ".." in entry.parts:
+                continue
+            source = Path(distribution.locate_file(entry))
+            # A RECORD lists what installing wrote, and bytecode caches come and go
+            # underneath it. What is not there now is not part of the distribution.
+            if not source.is_file():
+                continue
+            destination = target / Path(*entry.parts)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, destination)
+
+
+@pytest.fixture(scope="session")
+def installed(uv, wheel, carried, cold_cache, tmp_path_factory) -> Path:
+    """The command, installed into a virtual environment of its own and nothing else."""
     root = tmp_path_factory.mktemp("installed")
     environment = root / "venv"
     # Built for the interpreter this suite is running on rather than whichever one uv
-    # would pick: offline, an interpreter that has to be fetched is a failure, and the
-    # one already running is the one that is certainly here.
-    subprocess.run(
-        [uv, "venv", "--offline", "--python", sys.executable, str(environment)],
-        check=True,
-        capture_output=True,
+    # would pick: an interpreter that has to be fetched is a failure against a cache
+    # with nothing in it, and the one already running is the one that is certainly here.
+    _uv(uv, cold_cache, "venv", "--offline", "--python", sys.executable, str(environment))
+    _uv(
+        uv,
+        cold_cache,
+        *("pip", "install", "--offline", "--no-deps"),
+        *("--python", str(environment), str(wheel)),
     )
-    subprocess.run(
-        [uv, "pip", "install", "--offline", "--python", str(environment), str(wheel)],
-        check=True,
-        capture_output=True,
-    )
+    _install_runtime_dependencies(environment, carried)
+    (_site_packages(environment) / "sitecustomize.py").write_text(_NO_SOCKETS, encoding="utf-8")
     command = environment / "bin" / "semantic-layer"
     assert command.exists(), "the wheel installed no semantic-layer command"
     return command
@@ -189,6 +363,9 @@ def elsewhere(tmp_path_factory) -> Path:
         encoding="utf-8",
     )
     return root
+
+
+## What the wheel does once it is installed.
 
 
 def outside(installed: Path, elsewhere: Path, *argv: str):
@@ -301,14 +478,57 @@ def test_an_installed_command_needs_no_checkout_beside_it(installed, elsewhere):
     assert str(graph.ROOT) not in json.dumps(document)
 
 
-def test_the_installation_reaches_no_network():
-    """The two commands in this file that could go online are told not to.
+def test_the_installation_holds_what_the_wheel_declares(installed, carried):
+    """Installed there, rather than importable from wherever this suite happens to run.
 
-    The suite takes the socket away for the whole session, and that reaches every test
-    in this process and none of the subprocesses this file starts. So the guarantee for
-    those two is the flag, and the flag is what is checked: without it, a machine with a
-    cold cache would quietly download rather than fail, and this file would be the one
-    place in the repository that goes to the network on a test run.
+    `importlib.metadata` answers out of the `.dist-info` directories beside the code, so
+    asking the installed interpreter for a version is asking whether each distribution
+    arrived whole rather than as a directory of modules. The names come out of the wheel
+    so a dependency added to `pyproject.toml` is covered without being written here too;
+    the two it must always declare are named, because a list read out of the artifact
+    would pass just as happily if the artifact declared nothing.
     """
-    source = inspect.getsource(installed.__wrapped__)
-    assert source.count("--offline") == 2, "a uv command here may reach the network"
+    declared = _wheel_requires(carried)
+    assert {"rdflib", "pyshacl"} <= set(declared), declared
+    finished = subprocess.run(
+        [
+            str(Path(installed).parent / "python"),
+            "-c",
+            "import importlib.metadata as found, sys\n"
+            "print('\\n'.join(found.version(name) for name in sys.argv[1:]))",
+            *declared,
+        ],
+        env={"PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+    )
+    assert finished.returncode == 0, finished.stderr
+    assert len(finished.stdout.split()) == len(declared)
+
+
+@pytest.mark.parametrize(
+    "attempt",
+    [
+        "socket.socket().connect(('127.0.0.1', 9))",
+        "socket.create_connection(('127.0.0.1', 9))",
+        "socket.getaddrinfo('example.invalid', 443)",
+    ],
+)
+def test_the_installed_command_runs_where_the_network_is_refused(installed, elsewhere, attempt):
+    """The environment every test above ran in has no network, shown rather than argued.
+
+    A flag on the installer says what uv was allowed to do; it says nothing about the
+    command afterwards, and it was the only thing this file used to check. So the
+    network is taken away from the installation itself, and this is the control that
+    proves the refusal is live: the same interpreter that runs the command, in the same
+    environment, from the same directory, reaches nowhere.
+    """
+    finished = subprocess.run(
+        [str(Path(installed).parent / "python"), "-c", f"import socket; {attempt}"],
+        cwd=elsewhere,
+        env={"PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+    )
+    assert finished.returncode != 0
+    assert "the installed command tried to reach the network" in finished.stderr

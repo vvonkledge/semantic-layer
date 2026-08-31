@@ -450,6 +450,14 @@ that carries nothing from it. That is there because a green suite in a checkout 
 nothing about an installation: an editable install *is* the checkout, so a missing
 resource is invisible in one by construction.
 
+Installing and running are held to different rules there, because only the second one is
+this boundary. The installation puts the wheel's declared runtime dependencies into that
+environment out of the distributions the suite is already running on, so it resolves
+nothing and needs no index, no network and no warm cache: every uv command it runs is
+handed a cache created empty, which is what a clean runner has. The running is where the
+guarantee lives, and it is taken rather than asserted - connecting and resolving are
+refused inside that environment, and a test shows the refusal firing there.
+
 ## Examples
 
 All of these run offline against what this repository already commits.
