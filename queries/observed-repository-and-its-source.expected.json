@@ -11,8 +11,8 @@
   {
     "repository": "https://semantic-layer.19h09.co/l2/github/api-github-com/repository/1347717349",
     "path": "vvonkledge/siana",
-    "observation": "https://semantic-layer.19h09.co/l2/github/api-github-com/observation/8ff2a001b1d3668982ca641c0afdea805f500bce206b8458385393423bfd4b32",
-    "observedAt": "2026-08-30T06:07:15+00:00",
+    "observation": "https://semantic-layer.19h09.co/l2/github/api-github-com/observation/2b50b84caa163c44ca850167ff4e9d17b39ea316c472f20b9c038855f5a23d24",
+    "observedAt": "2026-08-31T05:39:36+00:00",
     "source": "https://semantic-layer.19h09.co/l2/github/api-github-com",
     "provider": "github",
     "trustBasis": "Unauthenticated GET of the public GitHub REST API, captured in full and hashed. It is what GitHub showed an anonymous caller at the observation instant and nothing more: no private repository, no protection rule, no permission and no field this contract does not read. It says what the repository was, never what the organization is accountable for."
